@@ -1,20 +1,17 @@
 import json
-import time
-from datetime import datetime
-from sensors import sensor
 
-climate_config_topic = "homeassistant/climate/tydom/{id}/config"
-sensor_config_topic = "homeassistant/sensor/tydom/{id}/config"
-climate_json_attributes_topic = "climate/tydom/{id}/state"
+CLIMATE_CONFIG_TOPIC = "homeassistant/climate/tydom/{id}/config"
+SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
+CLIMATE_JSON_ATTRIBUTES_TOPIC = "climate/tydom/{id}/state"
 
-temperature_command_topic = "climate/tydom/{id}/set_setpoint"
-temperature_state_topic = "climate/tydom/{id}/setpoint"
-current_temperature_topic = "climate/tydom/{id}/temperature"
-mode_state_topic = "climate/tydom/{id}/hvacMode"
-mode_command_topic = "climate/tydom/{id}/set_hvacMode"
-hold_state_topic = "climate/tydom/{id}/thermicLevel"
-hold_command_topic = "climate/tydom/{id}/set_thermicLevel"
-out_temperature_state_topic = "sensor/tydom/{id}/temperature"
+TEMPERATURE_COMMAND_TOPIC = "climate/tydom/{id}/set_setpoint"
+TEMPERATURE_STATE_TOPIC = "climate/tydom/{id}/setpoint"
+CURRENT_TEMPERATURE_TOPIC = "climate/tydom/{id}/temperature"
+MODE_STATE_TOPIC = "climate/tydom/{id}/hvacMode"
+MODE_COMMAND_TOPIC = "climate/tydom/{id}/set_hvacMode"
+HOLD_STATE_TOPIC = "climate/tydom/{id}/thermicLevel"
+HOLD_COMMAND_TOPIC = "climate/tydom/{id}/set_thermicLevel"
+OUT_TEMPERATURE_STATE_TOPIC = "sensor/tydom/{id}/temperature"
 
 #temperature = current_temperature_topic 
 #setpoint= temperature_command_topic
@@ -42,9 +39,7 @@ out_temperature_state_topic = "sensor/tydom/{id}/temperature"
 # climate_json_attributes_topic = "climate/tydom/{id}/state"
 # State topic can be the same as the original device attributes topic !
 class Boiler:
-
     def __init__(self, tydom_attributes, tydom_client=None, mqtt=None):
-        
         self.attributes = tydom_attributes
         self.device_id = self.attributes['device_id']
         self.endpoint_id = self.attributes['endpoint_id']
@@ -54,35 +49,36 @@ class Boiler:
         self.tydom_client = tydom_client
 
     async def setup(self):
-        self.device = {}
+        self.device = {
+            'manufacturer': 'Delta Dore',
+            'name': self.name,
+            'identifiers': self.id
+        }
         self.config = {}
-        self.device['manufacturer'] = 'Delta Dore'
-        self.device['name'] = self.name
-        self.device['identifiers'] = self.id
+
         # Check if device is an outer temperature sensor
         if 'outTemperature' in self.attributes:
             self.config['name'] = 'Out Temperature'
             self.device['model'] = 'Sensor'
             self.config['device_class'] = 'temperature'
             self.config['unit_of_measurement'] = 'C'
-            self.config_topic = sensor_config_topic.format(id=self.id)
-            self.config['state_topic'] = out_temperature_state_topic.format(id=self.id)
+            self.config_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
+            self.config['state_topic'] = OUT_TEMPERATURE_STATE_TOPIC.format(id=self.id)
             self.topic_to_func = {}
         # Check if device is a heater with thermostat sensor
         else:
-#        elif 'setpoint' in self.attributes:
             self.config['name'] = self.name
             self.device['model'] = 'Climate'
-            self.config_topic = climate_config_topic.format(id=self.id)
-            self.config['temperature_command_topic'] = temperature_command_topic.format(id=self.id)
-            self.config['temperature_state_topic'] = temperature_state_topic.format(id=self.id)
-            self.config['current_temperature_topic'] = current_temperature_topic.format(id=self.id)
+            self.config_topic = CLIMATE_CONFIG_TOPIC.format(id=self.id)
+            self.config['temperature_command_topic'] = TEMPERATURE_COMMAND_TOPIC.format(id=self.id)
+            self.config['temperature_state_topic'] = TEMPERATURE_STATE_TOPIC.format(id=self.id)
+            self.config['current_temperature_topic'] = CURRENT_TEMPERATURE_TOPIC.format(id=self.id)
             self.config['modes'] = ["off", "heat"]
-            self.config['mode_state_topic'] = mode_state_topic.format(id=self.id)
-            self.config['mode_command_topic'] = mode_command_topic.format(id=self.id)
+            self.config['mode_state_topic'] = MODE_STATE_TOPIC.format(id=self.id)
+            self.config['mode_command_topic'] = MODE_COMMAND_TOPIC.format(id=self.id)
             self.config['hold_modes'] = ["STOP","ANTI_FROST","ECO","COMFORT"]
-            self.config['hold_state_topic'] = hold_state_topic.format(id=self.id)
-            self.config['hold_command_topic'] = hold_command_topic.format(id=self.id)
+            self.config['hold_state_topic'] = HOLD_STATE_TOPIC.format(id=self.id)
+            self.config['hold_command_topic'] = HOLD_COMMAND_TOPIC.format(id=self.id)
         # Electrical heater without thermostat
 #        else:
 #            self.boilertype = 'Electrical'
@@ -98,13 +94,13 @@ class Boiler:
 
         self.config['unique_id'] = self.id
 
-        if (self.mqtt != None):
+        if self.mqtt is not None:
             self.mqtt.mqtt_client.publish(self.config_topic, json.dumps(self.config), qos=0)
 
     async def update(self):
         await self.setup()
         
-        if (self.mqtt != None):
+        if self.mqtt is not None:
             if 'temperature' in self.attributes:
                 self.mqtt.mqtt_client.publish(self.config['current_temperature_topic'], '0' if self.attributes['temperature'] == 'None' else  self.attributes['temperature'], qos=0)
             if 'setpoint' in self.attributes:

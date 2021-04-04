@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 import asyncio
-import time
-from datetime import datetime
-import os
-import sys
 import json
+import os
 import socket
+
 import websockets
 
-from mqtt_client import MQTT_Hassio
+from mqtt_client import MqttHassio
 from tydomConnector import TydomWebSocketClient
 from tydomMessagehandler import TydomMessageHandler
 
@@ -18,7 +16,6 @@ print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
 print('STARTING TYDOM2MQTT')
-
 print('Dectecting environnement......')
 
 
@@ -62,7 +59,7 @@ try:
             if data['MQTT_PORT'] != 1883:
                 MQTT_PORT = data['MQTT_PORT']
 
-            if (data['MQTT_SSL'] == 'true') or (data['MQTT_SSL'] == True) :
+            if (data['MQTT_SSL'] == 'true') or data['MQTT_SSL']:
                 MQTT_SSL = True
 
         except Exception as e:
@@ -84,28 +81,22 @@ except FileNotFoundError :
     MQTT_PORT = os.getenv('MQTT_PORT', 1883) #1883 #1884 for websocket without SSL
     MQTT_SSL = os.getenv('MQTT_SSL', False)
 
-
 tydom_client = TydomWebSocketClient(mac=TYDOM_MAC, host=TYDOM_IP, password=TYDOM_PASSWORD, alarm_pin=TYDOM_ALARM_PIN)
-hassio = MQTT_Hassio(broker_host=MQTT_HOST, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASSWORD, mqtt_ssl=MQTT_SSL, home_zone=TYDOM_ALARM_HOME_ZONE, night_zone=TYDOM_ALARM_NIGHT_ZONE, tydom=tydom_client)
-
+hassio = MqttHassio(broker_host=MQTT_HOST, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASSWORD, mqtt_ssl=MQTT_SSL, home_zone=TYDOM_ALARM_HOME_ZONE, night_zone=TYDOM_ALARM_NIGHT_ZONE, tydom=tydom_client)
 
 def loop_task():
     print('Starting main loop_task')
 
     loop.run_until_complete(hassio.connect())
-
     tasks = [
         listen_tydom_forever(tydom_client)
     ]
-
     loop.run_until_complete(asyncio.wait(tasks))
-
 
 async def listen_tydom_forever(tydom_client):
     '''
         Connect, then receive all server messages and pipe them to the handler, and reconnects if needed
     '''
-
     while True:
         await asyncio.sleep(0)
         # # outer loop restarted every time the connection fails
@@ -134,14 +125,12 @@ async def listen_tydom_forever(tydom_client):
                         await asyncio.sleep(tydom_client.sleep_time)
                         break
                 # print('Server said > {}'.format(incoming_bytes_str))
-                incoming_bytes_str
                         
                 handler = TydomMessageHandler(incoming_bytes=incoming_bytes_str, tydom_client=tydom_client, mqtt_client=hassio)
                 try:
                     await handler.incomingTriage()
                 except Exception as e:
                     print('Tydom Message Handler exception :', e)
-                                
         except socket.gaierror:
             print('Socket error - retrying connection in {} sec (Ctrl-C to quit)'.format(tydom_client.sleep_time))
             await asyncio.sleep(tydom_client.sleep_time)
@@ -151,7 +140,6 @@ async def listen_tydom_forever(tydom_client):
             print('Retrying connection in {} sec (Ctrl-C to quit)'.format(tydom_client.sleep_time))
             await asyncio.sleep(tydom_client.sleep_time)
             continue
-
 
 if __name__ == '__main__':
     loop_task()

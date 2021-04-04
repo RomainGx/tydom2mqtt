@@ -1,91 +1,129 @@
+import json
+import logging
+import sys
+from http.client import HTTPResponse
+from http.server import BaseHTTPRequestHandler
+from io import BytesIO
+
+import urllib3
+
+from alarm_control_panel import Alarm
+from boiler import Boiler
 from cover import Cover
 from light import Light
-from boiler import Boiler
-from alarm_control_panel import Alarm
-from sensors import sensor
-
-from http.server import BaseHTTPRequestHandler
-from http.client import HTTPResponse
-import urllib3
-from io import BytesIO
-import json
-import sys
-import logging
+from sensors import Sensor
 
 _LOGGER = logging.getLogger(__name__)
 
 # Dicts
-deviceAlarmKeywords = ['alarmMode','alarmState','alarmSOS','zone1State','zone2State','zone3State','zone4State','zone5State','zone6State','zone7State','zone8State','gsmLevel','inactiveProduct','zone1State','liveCheckRunning','networkDefect','unitAutoProtect','unitBatteryDefect','unackedEvent','alarmTechnical','systAutoProtect','sysBatteryDefect','zsystSupervisionDefect','systOpenIssue','systTechnicalDefect','videoLinkDefect', 'outTemperature']
-deviceAlarmDetailsKeywords = ['alarmSOS','zone1State','zone2State','zone3State','zone4State','zone5State','zone6State','zone7State','zone8State','gsmLevel','inactiveProduct','zone1State','liveCheckRunning','networkDefect','unitAutoProtect','unitBatteryDefect','unackedEvent','alarmTechnical','systAutoProtect','sysBatteryDefect','zsystSupervisionDefect','systOpenIssue','systTechnicalDefect','videoLinkDefect', 'outTemperature']
+DEVICE_ALARM_KEYWORDS = ['alarmMode', 'alarmState', 'alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4State', 'zone5State', 'zone6State', 'zone7State', 'zone8State', 'gsmLevel', 'inactiveProduct', 'zone1State', 'liveCheckRunning', 'networkDefect', 'unitAutoProtect', 'unitBatteryDefect', 'unackedEvent', 'alarmTechnical', 'systAutoProtect', 'sysBatteryDefect', 'zsystSupervisionDefect', 'systOpenIssue', 'systTechnicalDefect', 'videoLinkDefect', 'outTemperature']
+DEVICE_ALARM_DETAILS_KEYWORDS = ['alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4State', 'zone5State', 'zone6State', 'zone7State', 'zone8State', 'gsmLevel', 'inactiveProduct', 'zone1State', 'liveCheckRunning', 'networkDefect', 'unitAutoProtect', 'unitBatteryDefect', 'unackedEvent', 'alarmTechnical', 'systAutoProtect', 'sysBatteryDefect', 'zsystSupervisionDefect', 'systOpenIssue', 'systTechnicalDefect', 'videoLinkDefect', 'outTemperature']
 
-deviceLightKeywords = ['level','onFavPos','thermicDefect','battDefect','loadDefect','cmdDefect','onPresenceDetected','onDusk']
-deviceLightDetailsKeywords = ['onFavPos','thermicDefect','battDefect','loadDefect','cmdDefect','onPresenceDetected','onDusk']
+DEVICE_LIGHT_KEYWORDS = ['level', 'onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
+DEVICE_LIGHT_DETAILS_KEYWORDS = ['onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
 
-deviceDoorKeywords = ['openState', 'intrusionDetect']
-deviceDoorDetailsKeywords = ['onFavPos','thermicDefect','obstacleDefect','intrusion','battDefect']
+DEVICE_DOOR_KEYWORDS = ['openState', 'intrusionDetect']
+DEVICE_DOOR_DETAILS_KEYWORDS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
 
-deviceCoverKeywords = ['position','onFavPos','thermicDefect','obstacleDefect','intrusion','battDefect']
-deviceCoverDetailsKeywords = ['onFavPos','thermicDefect','obstacleDefect','intrusion','battDefect', 'position']
+DEVICE_COVER_KEYWORDS = ['position', 'onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
+DEVICE_COVER_DETAILS_KEYWORDS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect', 'position']
 
 #climateKeywords = ['temperature', 'authorization', 'hvacMode', 'setpoint']
 
-deviceBoilerKeywords = ['thermicLevel','delayThermicLevel','temperature','authorization','hvacMode','timeDelay','tempoOn','antifrostOn','openingDetected','presenceDetected','absence','loadSheddingOn','setpoint','delaySetpoint','anticipCoeff','outTemperature']
+DEVICE_BOILER_KEYWORDS = [
+    'thermicLevel',
+    'delayThermicLevel',
+    'temperature',
+    'authorization',
+    'hvacMode',
+    'timeDelay',
+    'tempoOn',
+    'antifrostOn',
+    'openingDetected',
+    'presenceDetected',
+    'absence',
+    'loadSheddingOn',
+    'setpoint',
+    'delaySetpoint',
+    'anticipCoeff',
+    'outTemperature'
+]
 
-device_conso_classes = {'energyInstantTotElec': 'current', 'energyInstantTotElec_Min': 'current',
-                  'energyInstantTotElec_Max': 'current',
-                  'energyScaleTotElec_Min': 'current', 'energyScaleTotElec_Max': 'current',
-                  'energyInstantTotElecP': 'power', 'energyInstantTotElec_P_Min': 'power',
-                  'energyInstantTotElec_P_Max': 'power',
-                  'energyScaleTotElec_P_Min': 'power', 'energyScaleTotElec_P_Max': 'power',
-                  'energyInstantTi1P': 'power', 'energyInstantTi1P_Min': 'power', 'energyInstantTi1P_Max': 'power',
-                  'energyScaleTi1P_Min': 'power',
-                  'energyScaleTi1P_Max': 'power',
-                  'energyInstantTi1I': 'current', 'energyInstantTi1I_Min': 'current',
-                  'energyInstantTi1I_Max': 'current', 'energyScaleTi1I_Min': 'current',
-                  'energyScaleTi1I_Max': 'current',
-                  'energyTotIndexWatt': 'energy'}
+DEVICE_CONSUMPTION_CLASSES = {
+    'energyInstantTotElec': 'current',
+    'energyInstantTotElec_Min': 'current',
+    'energyInstantTotElec_Max': 'current',
+    'energyScaleTotElec_Min': 'current',
+    'energyScaleTotElec_Max': 'current',
+    'energyInstantTotElecP': 'power',
+    'energyInstantTotElec_P_Min': 'power',
+    'energyInstantTotElec_P_Max': 'power',
+    'energyScaleTotElec_P_Min': 'power',
+    'energyScaleTotElec_P_Max': 'power',
+    'energyInstantTi1P': 'power',
+    'energyInstantTi1P_Min': 'power',
+    'energyInstantTi1P_Max': 'power',
+    'energyScaleTi1P_Min': 'power',
+    'energyScaleTi1P_Max': 'power',
+    'energyInstantTi1I': 'current',
+    'energyInstantTi1I_Min': 'current',
+    'energyInstantTi1I_Max': 'current',
+    'energyScaleTi1I_Min': 'current',
+    'energyScaleTi1I_Max': 'current',
+    'energyTotIndexWatt': 'energy'
+}
 
-device_conso_unit_of_measurement = {'energyInstantTotElec': 'A', 'energyInstantTotElec_Min': 'A', 'energyInstantTotElec_Max': 'A',
-                       'energyScaleTotElec_Min': 'A', 'energyScaleTotElec_Max': 'A',
-                       'energyInstantTotElecP': 'W', 'energyInstantTotElec_P_Min': 'W',
-                       'energyInstantTotElec_P_Max': 'W',
-                       'energyScaleTotElec_P_Min': 'W', 'energyScaleTotElec_P_Max': 'W',
-                       'energyInstantTi1P': 'W', 'energyInstantTi1P_Min': 'W', 'energyInstantTi1P_Max': 'W',
-                       'energyScaleTi1P_Min': 'W',
-                       'energyScaleTi1P_Max': 'W',
-                       'energyInstantTi1I': 'A', 'energyInstantTi1I_Min': 'A',
-                       'energyInstantTi1I_Max': 'A', 'energyScaleTi1I_Min': 'A',
-                       'energyScaleTi1I_Max': 'A', 'energyTotIndexWatt': 'Wh'}
-device_conso_keywords = device_conso_classes.keys()
+DEVICE_CONSUMPTION_UNIT_OF_MEASUREMENT = {
+    'energyInstantTotElec': 'A',
+    'energyInstantTotElec_Min': 'A',
+    'energyInstantTotElec_Max': 'A',
+    'energyScaleTotElec_Min': 'A',
+    'energyScaleTotElec_Max': 'A',
+    'energyInstantTotElecP': 'W',
+    'energyInstantTotElec_P_Min': 'W',
+    'energyInstantTotElec_P_Max': 'W',
+    'energyScaleTotElec_P_Min': 'W',
+    'energyScaleTotElec_P_Max': 'W',
+    'energyInstantTi1P': 'W',
+    'energyInstantTi1P_Min': 'W',
+    'energyInstantTi1P_Max': 'W',
+    'energyScaleTi1P_Min': 'W',
+    'energyScaleTi1P_Max': 'W',
+    'energyInstantTi1I': 'A',
+    'energyInstantTi1I_Min': 'A',
+    'energyInstantTi1I_Max': 'A',
+    'energyScaleTi1I_Min': 'A',
+    'energyScaleTi1I_Max': 'A',
+    'energyTotIndexWatt': 'Wh'
+}
+DEVICE_CONSUMPTION_KEYWORDS = DEVICE_CONSUMPTION_CLASSES.keys()
 
 # Device dict for parsing
-device_name = dict()
-device_endpoint = dict()
-device_type = dict()
+device_name_dict = dict()
+device_endpoint_dict = dict()
+device_type_dict = dict()
 # Thanks @Max013 !
 
 class TydomMessageHandler():
-
-
     def __init__(self, incoming_bytes, tydom_client, mqtt_client):
-            # print('New tydom incoming message')
-            self.incoming_bytes = incoming_bytes
-            self.tydom_client = tydom_client
-            self.cmd_prefix = tydom_client.cmd_prefix
-            self.mqtt_client = mqtt_client
+        self.incoming_bytes = incoming_bytes
+        self.tydom_client = tydom_client
+        self.cmd_prefix = tydom_client.cmd_prefix
+        self.mqtt_client = mqtt_client
 
     async def incomingTriage(self):
         bytes_str = self.incoming_bytes
-        if self.mqtt_client == None: #If not MQTT client, return incoming message to use it with anything.
+
+        if self.mqtt_client is None:  # If not MQTT client, return incoming message to use it with anything.
             return bytes_str
         else:
             incoming = None
-            first = str(bytes_str[:40]) # Scanning 1st characters
+            first = str(bytes_str[:40])  # Scanning 1st characters
+
             try:
-                if ("Uri-Origin: /refresh/all" in first in first):
+                if "Uri-Origin: /refresh/all" in first in first:
                     pass
                 elif ("PUT /devices/data" in first) or ("/devices/cdata" in first):
-                    # print('PUT /devices/data message detected !')
                     try:
                         incoming = self.parse_put_response(bytes_str)
                         await self.parse_response(incoming)
@@ -95,7 +133,7 @@ class TydomMessageHandler():
                         print(bytes_str)
                         print('END RAW')
                         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                elif ("scn" in first):
+                elif "scn" in first:
                     try:
                         incoming = get(bytes_str)
                         await self.parse_response(incoming)
@@ -107,7 +145,7 @@ class TydomMessageHandler():
                         print(bytes_str)
                         print('END RAW')
                         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                elif ("POST" in first):
+                elif "POST" in first:
                     try:
                         incoming = self.parse_put_response(bytes_str)
                         await self.parse_response(incoming)
@@ -118,7 +156,7 @@ class TydomMessageHandler():
                         print(bytes_str)
                         print('END RAW')
                         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                elif ("HTTP/1.1" in first): #(bytes_str != 0) and
+                elif "HTTP/1.1" in first:  # (bytes_str != 0) and
                     response = self.response_from_bytes(bytes_str[len(self.cmd_prefix):])
                     incoming = response.data.decode("utf-8")
                     try:
@@ -147,7 +185,7 @@ class TydomMessageHandler():
                 print("Error :")
                 print(e)
                 print('Exiting to ensure systemd restart....')
-                sys.exit() #Exit all to ensure systemd restart
+                sys.exit()  # Exit all to ensure systemd restart
 
     # Basic response parsing. Typically GET responses + instanciate covers and alarm class for updating data
     async def parse_response(self, incoming):
@@ -156,20 +194,20 @@ class TydomMessageHandler():
 
         first = str(data[:40])
         # Detect type of incoming data
-        if (data != ''):
-            if ("id_catalog" in data): #search for id_catalog in all data to be sure to get configuration detected
+        if data != '':
+            if "id_catalog" in data:  # search for id_catalog in all data to be sure to get configuration detected
                 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 print('Incoming message type : config detected')
                 msg_type = 'msg_config'
-            elif ("id" in first):
+            elif "id" in first:
                 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 print('Incoming message type : data detected')
                 msg_type = 'msg_data'
-            elif ("doctype" in first):
+            elif "doctype" in first:
                 print('Incoming message type : html detected (probable 404)')
                 msg_type = 'msg_html'
                 print(data)
-            elif ("productName" in first):
+            elif "productName" in first:
                 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 print('Incoming message type : Info detected')
                 msg_type = 'msg_info'
@@ -178,20 +216,20 @@ class TydomMessageHandler():
                 print('Incoming message type : no type detected')
                 print(data)
 
-            if not (msg_type == None):
+            if not (msg_type is None):
                 try:
-                    if (msg_type == 'msg_config'):
+                    if msg_type == 'msg_config':
                         parsed = json.loads(data)
-                        #print(parsed)
+                        # print(parsed)
                         await self.parse_config_data(parsed=parsed)
 
-                    elif (msg_type == 'msg_data'):
+                    elif msg_type == 'msg_data':
                         parsed = json.loads(data)
-                        #print(parsed)
+                        # print(parsed)
                         await self.parse_devices_data(parsed=parsed)
-                    elif (msg_type == 'msg_html'):
+                    elif msg_type == 'msg_html':
                         print("HTML Response ?")
-                    elif (msg_type == 'msg_info'):
+                    elif msg_type == 'msg_info':
                         pass
                     else:
                         # Default json dump
@@ -212,32 +250,30 @@ class TydomMessageHandler():
             # Get list of shutter
             # print(i)
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
+
             if i["last_usage"] == 'shutter' or i["last_usage"] == 'klineShutter' or i["last_usage"] == 'light' or i["last_usage"] == 'window' or i["last_usage"] == 'windowFrench' or i["last_usage"] == 'belmDoor' or i["last_usage"] == 'klineDoor' or i["last_usage"] == 'klineWindowFrench':
                 # print('{} {}'.format(i["id_endpoint"],i["name"]))
                 # device_name[i["id_endpoint"]] = i["name"]
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = i["last_usage"]
-                device_endpoint[device_unique_id] = i["id_endpoint"]
-
+                device_name_dict[device_unique_id] = i["name"]
+                device_type_dict[device_unique_id] = i["last_usage"]
+                device_endpoint_dict[device_unique_id] = i["id_endpoint"]
 
             if i["last_usage"] == 'boiler' or i["last_usage"] == 'conso':
                 # print('{} {}'.format(i["id_endpoint"],i["name"]))
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = i["last_usage"]
-                device_endpoint[device_unique_id] = i["id_endpoint"]
+                device_name_dict[device_unique_id] = i["name"]
+                device_type_dict[device_unique_id] = i["last_usage"]
+                device_endpoint_dict[device_unique_id] = i["id_endpoint"]
 
             if i["last_usage"] == 'alarm':
                 # print('{} {}'.format(i["id_endpoint"], i["name"]))
-                device_name[device_unique_id] = "Tyxal Alarm"
-                device_type[device_unique_id] = 'alarm'
-                device_endpoint[device_unique_id] = i["id_endpoint"]
-
+                device_name_dict[device_unique_id] = "Tyxal Alarm"
+                device_type_dict[device_unique_id] = 'alarm'
+                device_endpoint_dict[device_unique_id] = i["id_endpoint"]
 
             if i["last_usage"] == 'electric':
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] =  'boiler'
-                device_endpoint[device_unique_id] = i["id_endpoint"]
-
+                device_name_dict[device_unique_id] = i["name"]
+                device_type_dict[device_unique_id] = 'boiler'
+                device_endpoint_dict[device_unique_id] = i["id_endpoint"]
 
         print('Configuration updated')
 
@@ -273,10 +309,10 @@ class TydomMessageHandler():
                             # endpoint_id = None
 
                             # Element name
-                            elementName = elem["name"]
+                            element_name = elem["name"]
                             # Element value
-                            elementValue = elem["value"]
-                            elementValidity = elem["validity"]
+                            element_value = elem["value"]
+                            element_validity = elem["validity"]
                             print_id = None
                             if len(name_of_id) != 0:
                                 print_id = name_of_id
@@ -286,85 +322,85 @@ class TydomMessageHandler():
                             #    endpoint_id = device_endpoint[device_id]
 
                             if type_of_id == 'light':
-                                if elementName in deviceLightKeywords and elementValidity == 'upToDate':  # NEW METHOD
+                                if element_name in DEVICE_LIGHT_KEYWORDS and element_validity == 'upToDate':  # NEW METHOD
                                     attr_light['device_id'] = device_id
                                     attr_light['endpoint_id'] = endpoint_id
                                     attr_light['id'] = str(device_id) + '_' + str(endpoint_id)
                                     attr_light['light_name'] = print_id
                                     attr_light['name'] = print_id
                                     attr_light['device_type'] = 'light'
-                                    attr_light[elementName] = elementValue
+                                    attr_light[element_name] = element_value
 
                             if type_of_id == 'shutter' or type_of_id == 'klineShutter':
-                                if elementName in deviceCoverKeywords and elementValidity == 'upToDate': #NEW METHOD
+                                if element_name in DEVICE_COVER_KEYWORDS and element_validity == 'upToDate': #NEW METHOD
                                     attr_cover['device_id'] = device_id
                                     attr_cover['endpoint_id'] = endpoint_id
                                     attr_cover['id'] = str(device_id)+'_'+str(endpoint_id)
                                     attr_cover['cover_name'] = print_id
                                     attr_cover['name'] = print_id
                                     attr_cover['device_type'] = 'cover'
-                                    attr_cover[elementName] = elementValue                             
-                                    
+                                    attr_cover[element_name] = element_value
+
                             if type_of_id == 'belmDoor' or type_of_id == 'klineDoor':
-                                if elementName in deviceDoorKeywords and elementValidity == 'upToDate': #NEW METHOD
+                                if element_name in DEVICE_DOOR_KEYWORDS and element_validity == 'upToDate':  # NEW METHOD
                                     attr_door['device_id'] = device_id
                                     attr_door['endpoint_id'] = endpoint_id
                                     attr_door['id'] = str(device_id)+'_'+str(endpoint_id)
                                     attr_door['door_name'] = print_id
                                     attr_door['name'] = print_id
                                     attr_door['device_type'] = 'sensor'
-                                    attr_door[elementName] = elementValue
-                                    
+                                    attr_door[element_name] = element_value
+
                             if type_of_id == 'windowFrench' or type_of_id == 'window' or type_of_id == 'klineWindowFrench':
-                                if elementName in deviceDoorKeywords and elementValidity == 'upToDate': #NEW METHOD
+                                if element_name in DEVICE_DOOR_KEYWORDS and element_validity == 'upToDate':  # NEW METHOD
                                     attr_window['device_id'] = device_id
                                     attr_window['endpoint_id'] = endpoint_id
                                     attr_window['id'] = str(device_id)+'_'+str(endpoint_id)
                                     attr_window['door_name'] = print_id
                                     attr_window['name'] = print_id
                                     attr_window['device_type'] = 'sensor'
-                                    attr_window[elementName] = elementValue
+                                    attr_window[element_name] = element_value
 
                             if type_of_id == 'boiler':
-                                if elementName in deviceBoilerKeywords and elementValidity == 'upToDate': #NEW METHOD
+                                if element_name in DEVICE_BOILER_KEYWORDS and element_validity == 'upToDate':  # NEW METHOD
                                     attr_boiler['device_id'] = device_id
                                     attr_boiler['endpoint_id'] = endpoint_id
                                     attr_boiler['id'] = str(device_id)+'_'+str(endpoint_id)
                                     # attr_boiler['boiler_name'] = print_id
                                     attr_boiler['name'] = print_id
                                     attr_boiler['device_type'] = 'climate'
-                                    attr_boiler[elementName] = elementValue
+                                    attr_boiler[element_name] = element_value
 
                             if type_of_id == 'alarm':
-                                if elementName in deviceAlarmKeywords and elementValidity == 'upToDate':
+                                if element_name in DEVICE_ALARM_KEYWORDS and element_validity == 'upToDate':
                                     attr_alarm['device_id'] = device_id
                                     attr_alarm['endpoint_id'] = endpoint_id
                                     attr_alarm['id'] = str(device_id)+'_'+str(endpoint_id)
                                     attr_alarm['alarm_name']="Tyxal Alarm"
                                     attr_alarm['name']="Tyxal Alarm"
                                     attr_alarm['device_type'] = 'alarm_control_panel'
-                                    attr_alarm[elementName] = elementValue
+                                    attr_alarm[element_name] = element_value
 
                             if type_of_id == 'conso':
-                                if elementName in device_conso_keywords and elementValidity == "upToDate":
-                                    attr_conso = {
+                                if element_name in DEVICE_CONSUMPTION_KEYWORDS and element_validity == "upToDate":
+                                    attr_consumption = {
                                         'device_id': device_id,
                                         'endpoint_id': endpoint_id,
                                         'id': str(device_id) + '_' + str(endpoint_id),
                                         'name': print_id,
                                         'device_type': 'sensor',
-                                        elementName: elementValue
+                                        element_name: element_value
                                     }
 
-                                    if elementName in device_conso_classes:
-                                        attr_conso['device_class'] = device_conso_classes[elementName]
+                                    if element_name in DEVICE_CONSUMPTION_CLASSES:
+                                        attr_consumption['device_class'] = DEVICE_CONSUMPTION_CLASSES[element_name]
 
-                                    if elementName in device_conso_unit_of_measurement:
-                                        attr_conso['unit_of_measurement'] = device_conso_unit_of_measurement[elementName]
+                                    if element_name in DEVICE_CONSUMPTION_UNIT_OF_MEASUREMENT:
+                                        attr_consumption['unit_of_measurement'] = DEVICE_CONSUMPTION_UNIT_OF_MEASUREMENT[element_name]
 
-                                    new_conso = sensor(elem_name=elementName, tydom_attributes_payload=attr_conso,
-                                                       attributes_topic_from_device='useless', mqtt=self.mqtt_client)
-                                    await new_conso.update()
+                                    new_consumption = Sensor(elem_name=element_name, tydom_attributes_payload=attr_consumption,
+                                                             attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                                    await new_consumption.update()
 
                     except Exception as e:
                         print('msg_data error in parsing !')
@@ -373,34 +409,34 @@ class TydomMessageHandler():
                     if 'device_type' in attr_cover and attr_cover['device_type'] == 'cover':
                         # print(attr_cover)
                         new_cover = "cover_tydom_"+str(device_id)
-                        new_cover = Cover(tydom_attributes=attr_cover, mqtt=self.mqtt_client) #NEW METHOD
-                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=elementValue, attributes=i, mqtt=self.mqtt_client)
+                        new_cover = Cover(tydom_attributes=attr_cover, mqtt=self.mqtt_client)  # NEW METHOD
+                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=element_value, attributes=i, mqtt=self.mqtt_client)
                         await new_cover.update()
                     elif 'device_type' in attr_door and attr_door['device_type'] == 'sensor':
                         # print(attr_cover)
                         new_door = "door_tydom_"+str(device_id)
-                        new_door = sensor(elem_name='openState', tydom_attributes_payload=attr_door, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
-                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=elementValue, attributes=i, mqtt=self.mqtt_client)
+                        new_door = Sensor(elem_name='openState', tydom_attributes_payload=attr_door, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=element_value, attributes=i, mqtt=self.mqtt_client)
                         await new_door.update()
                     elif 'device_type' in attr_window and attr_window['device_type'] == 'sensor':
                         # print(attr_cover)
                         new_window = "window_tydom_"+str(device_id)
-                        new_window = sensor(elem_name='openState', tydom_attributes_payload=attr_window, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
-                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=elementValue, attributes=i, mqtt=self.mqtt_client)
+                        new_window = Sensor(elem_name='openState', tydom_attributes_payload=attr_window, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=element_value, attributes=i, mqtt=self.mqtt_client)
                         await new_window.update()
                     elif 'device_type' in attr_light and attr_light['device_type'] == 'light':
                         # print(attr_cover)
                         new_light = "light_tydom_"+str(device_id)
-                        new_light = Light(tydom_attributes=attr_light, mqtt=self.mqtt_client) #NEW METHOD
-                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=elementValue, attributes=i, mqtt=self.mqtt_client)
+                        new_light = Light(tydom_attributes=attr_light, mqtt=self.mqtt_client)  # NEW METHOD
+                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=element_value, attributes=i, mqtt=self.mqtt_client)
                         await new_light.update()
                     elif 'device_type' in attr_boiler and attr_boiler['device_type'] == 'climate':
                         # print(attr_boiler)
                         new_boiler = "boiler_tydom_"+str(device_id)
-                        new_boiler = Boiler(tydom_attributes=attr_boiler, tydom_client=self.tydom_client, mqtt=self.mqtt_client) #NEW METHOD
-                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=elementValue, attributes=i, mqtt=self.mqtt_client)
+                        new_boiler = Boiler(tydom_attributes=attr_boiler, tydom_client=self.tydom_client, mqtt=self.mqtt_client)  # NEW METHOD
+                        # new_cover = Cover(id=endpoint_id,name=print_id, current_position=element_value, attributes=i, mqtt=self.mqtt_client)
                         await new_boiler.update()
-                   # Get last known state (for alarm) # NEW METHOD
+                   # Get last known state (for alarm)  # NEW METHOD
                     elif 'device_type' in attr_alarm and attr_alarm['device_type'] == 'alarm_control_panel':
                         # print(attr_alarm)
                         state = None
@@ -444,10 +480,10 @@ class TydomMessageHandler():
                             if 'outTemperature' in attr_alarm:
                                 out = attr_alarm["outTemperature"]
 
-                            if (sos_state == True):
+                            if sos_state:
                                 print("SOS !")
 
-                            if not (state == None):
+                            if not (state is None):
                                 # print(state)
                                 alarm = "alarm_tydom_"+str(endpoint_id)
                                 # print("Alarm created / updated : "+alarm)
@@ -494,8 +530,8 @@ class TydomMessageHandler():
 
     def get_type_from_id(self, id):
         deviceType = ""
-        if len(device_type) != 0 and id in device_type.keys():
-            deviceType = device_type[id]
+        if len(device_type_dict) != 0 and id in device_type_dict.keys():
+            deviceType = device_type_dict[id]
         else:
             print('{} not in dic device_type'.format(id))
 
@@ -504,8 +540,8 @@ class TydomMessageHandler():
     # Get pretty name for a device id
     def get_name_from_id(self, id):
         name = ""
-        if len(device_name) != 0 and id in device_name.keys():
-            name = device_name[id]
+        if len(device_name_dict) != 0 and id in device_name_dict.keys():
+            name = device_name_dict[id]
         else:
             print('{} not in dic device_name'.format(id))
         return name

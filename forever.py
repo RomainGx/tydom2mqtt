@@ -10,4 +10,4 @@ while True:
     p.wait()
 
 
-    #thanks https://ep.gnt.md/index.php/how-to-restart-python-script-after-exception-and-run-it-forever/
+# thanks https://ep.gnt.md/index.php/how-to-restart-python-script-after-exception-and-run-it-forever/
