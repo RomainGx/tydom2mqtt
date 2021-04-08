@@ -23,19 +23,17 @@ class Alarm:
         self.state_topic = ''
 
     async def setup(self):
-        self.device = {
-            'manufacturer': 'Delta Dore',
-            'model': 'Tyxal',
-            'name': self.name,
-            'identifiers': self.id
-        }
-
         self.config_alarm_topic = ALARM_CONFIG_TOPIC.format(id=self.id)
 
         self.config = {
             'name': self.name,
             'unique_id': self.id,
-            'device': self.device,
+            'device': {
+                'manufacturer': 'Delta Dore',
+                'model': 'Tyxal',
+                'name': self.name,
+                'identifiers': self.device_id
+            },
             'command_topic': ALARM_COMMAND_TOPIC.format(id=self.id),
             'state_topic': ALARM_STATE_TOPIC.format(id=self.id),
             'code_arm_required': 'false',

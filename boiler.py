@@ -2,16 +2,16 @@ import json
 
 CLIMATE_CONFIG_TOPIC = "homeassistant/climate/tydom/{id}/config"
 SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
-CLIMATE_JSON_ATTRIBUTES_TOPIC = "climate/tydom/{id}/state"
+CLIMATE_JSON_ATTRIBUTES_TOPIC = "homeassistant/climate/tydom/{id}/state"
 
-TEMPERATURE_COMMAND_TOPIC = "climate/tydom/{id}/set_setpoint"
-TEMPERATURE_STATE_TOPIC = "climate/tydom/{id}/setpoint"
-CURRENT_TEMPERATURE_TOPIC = "climate/tydom/{id}/temperature"
-MODE_STATE_TOPIC = "climate/tydom/{id}/hvacMode"
-MODE_COMMAND_TOPIC = "climate/tydom/{id}/set_hvacMode"
-HOLD_STATE_TOPIC = "climate/tydom/{id}/thermicLevel"
-HOLD_COMMAND_TOPIC = "climate/tydom/{id}/set_thermicLevel"
-OUT_TEMPERATURE_STATE_TOPIC = "sensor/tydom/{id}/temperature"
+TEMPERATURE_COMMAND_TOPIC = "homeassistant/climate/tydom/{id}/set_setpoint"
+TEMPERATURE_STATE_TOPIC = "homeassistant/climate/tydom/{id}/setpoint"
+CURRENT_TEMPERATURE_TOPIC = "homeassistant/climate/tydom/{id}/temperature"
+MODE_STATE_TOPIC = "homeassistant/climate/tydom/{id}/hvacMode"
+MODE_COMMAND_TOPIC = "homeassistant/climate/tydom/{id}/set_hvacMode"
+HOLD_STATE_TOPIC = "homeassistant/climate/tydom/{id}/thermicLevel"
+HOLD_COMMAND_TOPIC = "homeassistant/climate/tydom/{id}/set_thermicLevel"
+OUT_TEMPERATURE_STATE_TOPIC = "homeassistant/sensor/tydom/{id}/temperature"
 
 #temperature = current_temperature_topic 
 #setpoint= temperature_command_topic
@@ -39,12 +39,12 @@ OUT_TEMPERATURE_STATE_TOPIC = "sensor/tydom/{id}/temperature"
 # climate_json_attributes_topic = "climate/tydom/{id}/state"
 # State topic can be the same as the original device attributes topic !
 class Boiler:
-    def __init__(self, tydom_attributes, tydom_client=None, mqtt=None):
+    def __init__(self, tydom_attributes, device_id, endpoint_id, friendly_name, tydom_client=None, mqtt=None):
         self.attributes = tydom_attributes
-        self.device_id = self.attributes['device_id']
-        self.endpoint_id = self.attributes['endpoint_id']
-        self.id = self.attributes['id']
-        self.name = self.attributes['name']
+        self.device_id = device_id
+        self.endpoint_id = endpoint_id
+        self.id = str(device_id) + '_' + str(endpoint_id)
+        self.name = friendly_name
         self.mqtt = mqtt
         self.tydom_client = tydom_client
 
@@ -52,9 +52,9 @@ class Boiler:
         self.device = {
             'manufacturer': 'Delta Dore',
             'name': self.name,
-            'identifiers': self.id
+            'identifiers': self.device_id
         }
-        self.config = {}
+        self.config = {'unique_id': self.id}
 
         # Check if device is an outer temperature sensor
         if 'outTemperature' in self.attributes:
@@ -91,8 +91,6 @@ class Boiler:
 #            self.config['swing_modes'] = ["STOP","ANTI-FROST","ECO","COMFORT"]
 #            self.config['hold_state_topic'] = hold_state_topic.format(id=self.id)
 #            self.config['hold_command_topic'] = hold_command_topic.format(id=self.id)
-
-        self.config['unique_id'] = self.id
 
         if self.mqtt is not None:
             self.mqtt.mqtt_client.publish(self.config_topic, json.dumps(self.config), qos=0)
@@ -131,7 +129,7 @@ class Boiler:
             await tydom_client.put_devices_data(device_id, boiler_id, 'thermicLevel', 'COMFORT')
             await tydom_client.put_devices_data(device_id, boiler_id, 'setpoint', '10')
 
-    async def put_thermicLevel(tydom_client, device_id, boiler_id, set_thermicLevel):
-        print(boiler_id, 'thermicLevel', set_thermicLevel)
-        if not (set_thermicLevel == ''):
-            await tydom_client.put_devices_data(device_id, boiler_id, 'thermicLevel', set_thermicLevel)
+    async def put_thermicLevel(tydom_client, device_id, boiler_id, set_thermic_level):
+        print(boiler_id, 'thermicLevel', set_thermic_level)
+        if not (set_thermic_level == ''):
+            await tydom_client.put_devices_data(device_id, boiler_id, 'thermicLevel', set_thermic_level)

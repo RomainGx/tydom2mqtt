@@ -3,6 +3,7 @@ import time
 import json
 import socket
 import sys
+import re
 from datetime import datetime
 from gmqtt import Client as MQTTClient
 
@@ -14,7 +15,7 @@ from alarm_control_panel import Alarm
 from light import Light
 from boiler import Boiler
 
-TYDOM_TOPIC = "+/tydom/#"
+TYDOM_TOPIC = "homeassistant/+/tydom/#"
 REFRESH_TOPIC = "homeassistant/requests/tydom/refresh"
 hostname = socket.gethostname()
 
@@ -72,7 +73,7 @@ class MqttHassio():
             print("Error on connect : ", e)
 
     async def on_message(self, client, topic, payload, qos, properties):
-        # print('Incoming MQTT message : ', topic, payload)
+        print('Incoming MQTT message : ', topic, payload)
         if 'update' in str(topic):
             print('Incoming MQTT update request : ', topic, payload)
             await self.tydom.get_data()
@@ -105,82 +106,85 @@ class MqttHassio():
             print('Incoming MQTT set_positionCmd request : ', topic, payload)
             value = str(payload).strip('b').strip("'")
 
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
 
-            print(str(get_id), 'positionCmd', value)
+            print('positionCmd', value, device_id, endpoint_id)
             await Cover.put_positionCmd(tydom_client=self.tydom, device_id=device_id, cover_id=endpoint_id, positionCmd=str(value))
         elif ('set_position' in str(topic)) and not ('set_positionCmd'in str(topic)):
             print('Incoming MQTT set_position request : ', topic, json.loads(payload))
             value = json.loads(payload)
-            # print(value)
-            get_id = (topic.split("/"))[2] #extract ids from mqtt
-            device_id = (get_id.split("_"))[0] #extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1] #extract id from mqtt
-            
+
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
+
+            print('position', value, device_id, endpoint_id)
             await Cover.put_position(tydom_client=self.tydom, device_id=device_id, cover_id=endpoint_id, position=str(value))
         elif 'set_levelCmd' in str(topic):
             print('Incoming MQTT set_positionCmd request : ', topic, payload)
             value = str(payload).strip('b').strip("'")
 
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
 
-            print(str(get_id), 'levelCmd', value)
-            await Light.put_levelCmd(tydom_client=self.tydom, device_id=device_id, light_id=endpoint_id,
-                                        levelCmd=str(value))
+            print('levelCmd', value, device_id, endpoint_id)
+            await Light.put_levelCmd(tydom_client=self.tydom, device_id=device_id, light_id=endpoint_id, level_cmd=str(value))
         elif ('set_level' in str(topic)) and not ('set_levelCmd' in str(topic)):
             print('Incoming MQTT set_position request : ', topic, json.loads(payload))
             value = json.loads(payload)
-            # print(value)
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
 
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
+
+            print('putLevel', value, device_id, endpoint_id)
             await Light.put_level(tydom_client=self.tydom, device_id=device_id, light_id=endpoint_id, level=str(value))
         elif ('set_alarm_state' in str(topic)) and not ('homeassistant'in str(topic)):
             # print(topic, payload, qos, properties)
             command = str(payload).strip('b').strip("'")
 
-            get_id = (topic.split("/"))[2] #extract ids from mqtt
-            device_id = (get_id.split("_"))[0] #extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1] #extract id from mqtt
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
 
+            print('put_alarm_state', device_id, endpoint_id)
             await Alarm.put_alarm_state(tydom_client=self.tydom, device_id=device_id, alarm_id=endpoint_id, asked_state=command, home_zone=self.home_zone, night_zone=self.night_zone)
         elif 'set_setpoint' in str(topic):
             value = str(payload).strip('b').strip("'")
             print('Incoming MQTT setpoint request : ', topic, value)
             value = json.loads(payload)
-            # print(value)
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
 
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
+
+            print('put_temperature', value, device_id, endpoint_id)
             await Boiler.put_temperature(tydom_client=self.tydom, device_id=device_id, boiler_id=endpoint_id, set_setpoint=str(value))
         elif 'set_hvacMode' in str(topic):
             value = str(payload).strip('b').strip("'")
             print('Incoming MQTT set_hvacMode request : ', topic, value)
-            # print(value)
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
 
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
+
+            print('put_hvacMode', value, device_id, endpoint_id)
             await Boiler.put_hvacMode(tydom_client=self.tydom, device_id=device_id, boiler_id=endpoint_id, set_hvacMode=str(value))
         elif 'set_thermicLevel' in str(topic):
             value = str(payload).strip('b').strip("'")
             print('Incoming MQTT set_thermicLevel request : ', topic, value)
-            # print(value)
-            get_id = (topic.split("/"))[2]  # extract ids from mqtt
-            device_id = (get_id.split("_"))[0]  # extract id from mqtt
-            endpoint_id = (get_id.split("_"))[1]  # extract id from mqtt
 
-            await Boiler.put_thermicLevel(tydom_client=self.tydom, device_id=device_id, boiler_id=endpoint_id, set_thermicLevel=str(value))
+            ids = re.search('.*_([0-9]+)_([0-9]+)', topic)
+            device_id = ids.group(1)
+            endpoint_id = ids.group(2)
+
+            print('put_thermicLevel', value, device_id, endpoint_id)
+            await Boiler.put_thermicLevel(tydom_client=self.tydom, device_id=device_id, boiler_id=endpoint_id, set_thermic_level=str(value))
         else:
             pass
-            # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            # print('MQTT incoming : ', topic, payload.decode())
 
     def on_disconnect(self, client, packet, exc=None):
         print('MQTT Disconnected !')

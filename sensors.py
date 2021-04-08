@@ -1,12 +1,12 @@
 import json
 
-SENSOR_TOPIC = "sensor/tydom/#"
+SENSOR_TOPIC = "homeassistant/sensor/tydom/#"
 SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
-SENSOR_JSON_ATTRIBUTES_TOPIC = "sensor/tydom/{id}/state"
+SENSOR_JSON_ATTRIBUTES_TOPIC = "homeassistant/sensor/tydom/{id}/state"
 
-BINARY_SENSOR_TOPIC = "binary_sensor/tydom/#"
+BINARY_SENSOR_TOPIC = "homeassistant/binary_sensor/tydom/#"
 BINARY_SENSOR_CONFIG_TOPIC = "homeassistant/binary_sensor/tydom/{id}/config"
-BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC = "binary_sensor/tydom/{id}/state"
+BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC = "homeassistant/binary_sensor/tydom/{id}/state"
 
 # sensor_json_attributes_topic = "sensor/tydom/{id}/state"
 # State topic can be the same as the original device attributes topic !
@@ -22,7 +22,8 @@ class Sensor:
         # self.json_attributes_topic = attributes_topic_from_device #State extracted from json, but it will make sensor not in payload to be considerd offline....
         self.parent_device_id = str(tydom_attributes_payload['id'])
         self.id = elem_name + '_tydom_' + str(tydom_attributes_payload['id'])
-        self.name = elem_name + '_tydom_' + '_' + str(tydom_attributes_payload['name']).replace(" ", "_")
+        self.device_name = tydom_attributes_payload['name']
+        self.name = elem_name + '_tydom_' + '_' + self.device_name.replace(" ", "_")
         if 'device_class' in tydom_attributes_payload.keys():
             self.device_class = tydom_attributes_payload['device_class']
 
@@ -35,7 +36,7 @@ class Sensor:
         # self.device_class = None
         self.config_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
 
-        if not self.elem_value or self.elem_value:
+        if self.elem_value == False or self.elem_value == True:
             self.binary = True
             self.json_attributes_topic = BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC.format(id=self.id)
             self.config_topic = BINARY_SENSOR_CONFIG_TOPIC.format(id=self.id)
@@ -92,8 +93,8 @@ class Sensor:
         self.device = {
             'manufacturer': 'Delta Dore',
             'model': 'Sensor',
-            'name': self.name,
-            'identifiers': self.parent_device_id + '_sensors'
+            'name': self.device_name,
+            'identifiers': self.parent_device_id
         }
 
         self.config_sensor_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
@@ -134,12 +135,19 @@ class Sensor:
             pass  # OOOOOOOOOH that's quick and dirty
         else:
             await self.setup()  # Publish config
+            payload_value = self.elem_value
+
             # Publish state json to state topic
             if self.mqtt is not None:
                 # print(self.json_attributes_topic, self.attributes)
                 # self.mqtt.mqtt_client.publish(self.json_attributes_topic, self.attributes, qos=0) #sensor json State
-                self.mqtt.mqtt_client.publish(self.json_attributes_topic, self.elem_value, qos=0) #sensor State
+                if self.binary:
+                    if self.elem_value:
+                        payload_value = "ON"
+                    else:
+                        payload_value = "OFF"
+                self.mqtt.mqtt_client.publish(self.json_attributes_topic, payload_value, qos=0) #sensor State
             if not self.binary:
-                print("Sensor created / updated : ", self.name, self.elem_value)
+                print("Sensor created / updated : ", self.name, payload_value, self.id)
             else:
-                print("Binary sensor created / updated : ", self.name, self.elem_value)
+                print("Binary sensor created / updated : ", self.name, payload_value, self.id)

@@ -2,31 +2,25 @@ import json
 
 from sensors import Sensor
 
-COVER_COMMAND_TOPIC = "cover/tydom/{id}/set_positionCmd"
+COVER_COMMAND_TOPIC = "homeassistant/cover/tydom/{id}/set_positionCmd"
 COVER_CONFIG_TOPIC = "homeassistant/cover/tydom/{id}/config"
-COVER_POSITION_TOPIC = "cover/tydom/{id}/current_position"
-COVER_SET_POSITION_TOPIC = "cover/tydom/{id}/set_position"
-COVER_ATTRIBUTES_TOPIC = "cover/tydom/{id}/attributes"
+COVER_POSITION_TOPIC = "homeassistant/cover/tydom/{id}/current_position"
+COVER_SET_POSITION_TOPIC = "homeassistant/cover/tydom/{id}/set_position"
+COVER_ATTRIBUTES_TOPIC = "homeassistant/cover/tydom/{id}/attributes"
 
 class Cover:
-    def __init__(self, tydom_attributes, set_position=None, mqtt=None):
+    def __init__(self, tydom_attributes, device_id, endpoint_id, friendly_name, set_position=None, mqtt=None):
         self.attributes = tydom_attributes
-        self.device_id = self.attributes['device_id']
-        self.endpoint_id = self.attributes['endpoint_id']
-        self.id = self.attributes['id']
-        self.name = self.attributes['cover_name']
-        self.current_position = self.attributes['position']
+        self.device_id = device_id
+        self.endpoint_id = endpoint_id
+        self.device_id = str(device_id) + '_' + str(endpoint_id)
+        self.id = 'cover_tydom_' + self.device_id
+        self.name = friendly_name
+        self.current_position = tydom_attributes['position']
         self.set_position = set_position
         self.mqtt = mqtt
 
     async def setup(self):
-        self.device = {
-            'manufacturer': 'Delta Dore',
-            'model': 'Volet',
-            'name': self.name,
-            'identifiers': self.id
-        }
-
         self.config_topic = COVER_CONFIG_TOPIC.format(id=self.id)
         self.config = {
             'name': self.name,
@@ -39,15 +33,16 @@ class Cover:
             'payload_close': "DOWN",
             'payload_stop': "STOP",
             'retain': 'false',
-            'device': self.device
+            'device': {
+                'manufacturer': 'Delta Dore',
+                'model': 'Volet',
+                'name': self.name,
+                'identifiers': self.id
+            }
         }
-        # self.config['attributes'] = self.attributes
-        # print(self.config)
 
         if self.mqtt is not None:
             self.mqtt.mqtt_client.publish(self.config_topic, json.dumps(self.config), qos=0)
-        # setup_pub = '(self.config_topic, json.dumps(self.config), qos=0)'
-        # return(setup_pub)
 
     async def update(self):
         await self.setup()
@@ -70,12 +65,17 @@ class Cover:
         # return(update_pub)
 
     async def update_sensors(self):
-        for i, j in self.attributes.items():
-            # sensor_name = "tydom_alarm_sensor_"+i
-            # print("name "+sensor_name, "elem_name "+i, "attributes_topic_from_device ",self.config['json_attributes_topic'], "mqtt",self.mqtt)
-            if not i == 'device_type' or not i == 'id':
-                new_sensor = Sensor(elem_name=i, tydom_attributes_payload=self.attributes, attributes_topic_from_device=self.config['json_attributes_topic'], mqtt=self.mqtt)
-                await new_sensor.update()
+        for attributeName in self.attributes.keys():
+            tydom_attributes_payload = {
+                'device_id': self.device_id,
+                'endpoint_id': self.endpoint_id,
+                'id': self.id,
+                'name': self.name,
+                'device_class': 'opening',
+                attributeName: self.attributes[attributeName]
+            }
+            new_sensor = Sensor(elem_name=attributeName, tydom_attributes_payload=tydom_attributes_payload, attributes_topic_from_device=self.config['json_attributes_topic'], mqtt=self.mqtt)
+            await new_sensor.update()
 
     async def put_position(tydom_client, device_id, cover_id, position):
         print(cover_id, 'position', position)
