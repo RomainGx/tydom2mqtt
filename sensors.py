@@ -8,7 +8,6 @@ BINARY_SENSOR_TOPIC = "homeassistant/binary_sensor/tydom/#"
 BINARY_SENSOR_CONFIG_TOPIC = "homeassistant/binary_sensor/tydom/{id}/config"
 BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC = "homeassistant/binary_sensor/tydom/{id}/state"
 
-# sensor_json_attributes_topic = "sensor/tydom/{id}/state"
 # State topic can be the same as the original device attributes topic !
 class Sensor:
     def __init__(self, elem_name, tydom_attributes_payload, attributes_topic_from_device, mqtt=None):

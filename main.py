@@ -18,7 +18,6 @@ print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 print('STARTING TYDOM2MQTT')
 print('Dectecting environnement......')
 
-
 # DEFAULT VALUES
 loop = asyncio.get_event_loop()
 
@@ -30,7 +29,6 @@ TYDOM_ALARM_PIN = None
 TYDOM_ALARM_HOME_ZONE = 1
 TYDOM_ALARM_NIGHT_ZONE = 2
 
-
 try:
     with open('/data/options.json') as f:
         print('/data/options.json detected ! Hassio Addons Environnement : parsing options.json....')
@@ -38,18 +36,15 @@ try:
             data = json.load(f)
             print(data)
 
-            ####### CREDENTIALS TYDOM
-            TYDOM_MAC = data['TYDOM_MAC'] #MAC Address of Tydom Box
+            TYDOM_MAC = data['TYDOM_MAC']
             if data['TYDOM_IP'] != '':
-                TYDOM_IP = data['TYDOM_IP'] #, 'mediation.tydom.com') # Local ip address, default to mediation.tydom.com for remote connexion if not specified
+                TYDOM_IP = data['TYDOM_IP']
 
-            TYDOM_PASSWORD = data['TYDOM_PASSWORD'] #Tydom password
+            TYDOM_PASSWORD = data['TYDOM_PASSWORD']
             TYDOM_ALARM_PIN = data['TYDOM_ALARM_PIN']
-
             TYDOM_ALARM_HOME_ZONE = data['TYDOM_ALARM_HOME_ZONE']
             TYDOM_ALARM_NIGHT_ZONE = data['TYDOM_ALARM_NIGHT_ZONE']
 
-            ####### CREDENTIALS MQTT
             if data['MQTT_HOST'] != '':
                 MQTT_HOST = data['MQTT_HOST']
             
@@ -61,16 +56,15 @@ try:
 
             if (data['MQTT_SSL'] == 'true') or data['MQTT_SSL']:
                 MQTT_SSL = True
-
         except Exception as e:
             print('Parsing error', e)
 
 except FileNotFoundError :
     print("No /data/options.json, seems where are not in hassio addon mode.")
     ####### CREDENTIALS TYDOM
-    TYDOM_MAC = os.getenv('TYDOM_MAC') #MAC Address of Tydom Box
-    TYDOM_IP = os.getenv('TYDOM_IP', 'mediation.tydom.com') # Local ip address, default to mediation.tydom.com for remote connexion if not specified
-    TYDOM_PASSWORD = os.getenv('TYDOM_PASSWORD') #Tydom password
+    TYDOM_MAC = os.getenv('TYDOM_MAC')
+    TYDOM_IP = os.getenv('TYDOM_IP', 'mediation.tydom.com')
+    TYDOM_PASSWORD = os.getenv('TYDOM_PASSWORD')
     TYDOM_ALARM_PIN = os.getenv('TYDOM_ALARM_PIN')
     TYDOM_ALARM_HOME_ZONE = os.getenv('TYDOM_ALARM_HOME_ZONE', 1)
     TYDOM_ALARM_NIGHT_ZONE = os.getenv('TYDOM_ALARM_NIGHT_ZONE', 2)
@@ -78,7 +72,7 @@ except FileNotFoundError :
     MQTT_HOST = os.getenv('MQTT_HOST', 'localhost')
     MQTT_USER = os.getenv('MQTT_USER')
     MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
-    MQTT_PORT = os.getenv('MQTT_PORT', 1883) #1883 #1884 for websocket without SSL
+    MQTT_PORT = os.getenv('MQTT_PORT', 1883)  # 1884 for websocket without SSL
     MQTT_SSL = os.getenv('MQTT_SSL', False)
 
 tydom_client = TydomWebSocketClient(mac=TYDOM_MAC, host=TYDOM_IP, password=TYDOM_PASSWORD, alarm_pin=TYDOM_ALARM_PIN)
@@ -99,36 +93,34 @@ async def listen_tydom_forever(tydom_client):
     '''
     while True:
         await asyncio.sleep(0)
-        # # outer loop restarted every time the connection fails
+        # outer loop restarted every time the connection fails
         try:
             await tydom_client.connect()
             print("Tydom Client is connected to websocket and ready !")
             await tydom_client.setup()
 
-            while True:
             # listener loop
+            while True:
                 try:
                     incoming_bytes_str = await asyncio.wait_for(tydom_client.connection.recv(), timeout=tydom_client.refresh_timeout)
                     print('<<<<<<<<<< Receiving from tydom_client...')
-                    # print(incoming_bytes_str)
-
                 except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                     print(e)
                     try:
+                        # Ping the server to keep the connection alive
                         pong = tydom_client.post_refresh()
                         await asyncio.wait_for(pong, timeout=tydom_client.refresh_timeout)
-                        # print('Ping OK, keeping connection alive...')
                         continue
                     except Exception as e:
                         print('TimeoutError or websocket error - retrying connection in {} seconds...'.format(tydom_client.sleep_time))
                         print('Error:', e)
                         await asyncio.sleep(tydom_client.sleep_time)
                         break
-                # print('Server said > {}'.format(incoming_bytes_str))
                         
                 handler = TydomMessageHandler(incoming_bytes=incoming_bytes_str, tydom_client=tydom_client, mqtt_client=hassio)
+
                 try:
-                    await handler.incomingTriage()
+                    await handler.incoming_triage()
                 except Exception as e:
                     print('Tydom Message Handler exception :', e)
         except socket.gaierror:
