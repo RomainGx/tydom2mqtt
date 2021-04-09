@@ -6,13 +6,13 @@ from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 
 import urllib3
-from devices import devicesKeywords
 
 from alarm_control_panel import Alarm
 from boiler import Boiler
 from cover import Cover
 from devices.utils import *
 from light import Light
+from parsing.utils import *
 from sensors import Sensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 device_name_dict = dict()
 device_endpoint_dict = dict()
 device_type_dict = dict()
+
 
 class TydomMessageHandler():
     def __init__(self, incoming_bytes, tydom_client, mqtt_client):
@@ -185,66 +186,6 @@ class TydomMessageHandler():
 
         print('Configuration updated')
 
-    async def parse_light_endpoint(self, endpoint):
-        light_attributes = {}
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.LIGHT and endpoint_attributes["validity"] == 'upToDate':
-                light_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-
-        return light_attributes
-
-    async def parse_cover_endpoint(self, endpoint):
-        covers_attributes = {}
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.COVER and endpoint_attributes["validity"] == 'upToDate':
-                covers_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-                print("Ajoute shutter {}".format(endpoint_attributes["name"]))
-
-        return covers_attributes
-
-    async def parse_door_endpoint(self, endpoint):
-        door_attributes = {}
-        print("parse_door_endpoint")
-        print(endpoint["data"])
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.DOOR and endpoint_attributes["validity"] == 'upToDate':
-                print("dans le if")
-                print(endpoint_attributes["value"])
-                door_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-                print("Ajoute door {}".format(endpoint_attributes["name"]))
-
-        return door_attributes
-
-    async def parse_window_endpoint(self, endpoint):
-        window_attributes = {}
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.DOOR and endpoint_attributes["validity"] == 'upToDate':
-                window_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-
-        return window_attributes
-
-    async def parse_boiler_endpoint(self, endpoint):
-        boiler_attributes = {}
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.BOILER and endpoint_attributes["validity"] == 'upToDate':
-                boiler_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-
-        return boiler_attributes
-
-    async def parse_alarm_endpoint(self, endpoint):
-        alarm_attributes = {}
-
-        for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.ALARM and endpoint_attributes["validity"] == 'upToDate':
-                alarm_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-
-        return alarm_attributes
-
     async def parse_consumption_endpoint(self, endpoint_id, device_id, endpoint, friendly_name):
         attr_consumption = {}
 
@@ -347,23 +288,17 @@ class TydomMessageHandler():
                 friendly_name = name_of_id
 
             if is_light(type_of_id):
-                print("#############################")
-                print("Is light {}".format(device_id))
-                light_attributes = await self.parse_light_endpoint(endpoint)
-                print("Light attributes : {}".format(light_attributes))
+                light_attributes = parse_light_endpoint(endpoint)
                 if len(light_attributes.keys()) > 0:
                     new_light = Light(tydom_attributes=light_attributes, device_id=device_id, endpoint_id=endpoint_id, friendly_name=friendly_name, mqtt=self.mqtt_client)
                     await new_light.update()
             elif is_shutter(type_of_id):
-                print("Is shutter {}".format(device_id))
-                cover_attributes = await self.parse_cover_endpoint(endpoint)
+                cover_attributes = parse_cover_endpoint(endpoint)
                 if len(cover_attributes.keys()) > 0:
                     new_cover = Cover(tydom_attributes=cover_attributes, device_id=device_id, endpoint_id=endpoint_id, friendly_name=friendly_name, mqtt=self.mqtt_client)
                     await new_cover.update()
             elif is_door(type_of_id):
-                print("Is door {}".format(device_id))
-                door_attributes = await self.parse_door_endpoint(endpoint)
-                print("Door attributes : {}".format(door_attributes))
+                door_attributes = parse_door_endpoint(endpoint)
                 if len(door_attributes.keys()) > 0:
                     if 'openState' in door_attributes:
                         tydom_attributes = {
@@ -373,7 +308,6 @@ class TydomMessageHandler():
                             'name': friendly_name,
                             'openState': door_attributes['openState']
                         }
-                        print("Doo tydom attributes : {}".format(tydom_attributes))
                         new_door = Sensor(elem_name='openState', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
                         await new_door.update()
                     if 'intrusionDetect' in door_attributes:
@@ -384,12 +318,11 @@ class TydomMessageHandler():
                             'name': friendly_name,
                             'intrusionDetect': door_attributes['intrusionDetect']
                         }
-                        print("Doo tydom attributes : {}".format(tydom_attributes))
                         new_door = Sensor(elem_name='intrusionDetect', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
                         await new_door.update()
 
             elif is_window(type_of_id):
-                window_attributes = await self.parse_window_endpoint(endpoint)
+                window_attributes = parse_window_endpoint(endpoint)
                 if len(window_attributes.keys()) > 0:
                     tydom_attributes = {
                         'device_id': device_id,
@@ -401,18 +334,18 @@ class TydomMessageHandler():
                     new_window = Sensor(elem_name='openState', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
                     await new_window.update()
             elif is_boiler(type_of_id):
-                attr_boiler = await self.parse_boiler_endpoint(endpoint)
+                attr_boiler = parse_boiler_endpoint(endpoint)
                 if len(attr_boiler.keys()) > 0:
                     new_boiler = Boiler(tydom_attributes=attr_boiler, device_id = device_id, endpoint_id = endpoint_id, friendly_name = friendly_name, tydom_client=self.tydom_client, mqtt=self.mqtt_client)
                     await new_boiler.update()
             elif is_alarm(type_of_id):
-                alarm_attributes = await self.parse_alarm_endpoint(endpoint)
+                alarm_attributes = parse_alarm_endpoint(endpoint)
                 if len(alarm_attributes.keys()) > 0:
                     await self.configure_alarm(alarm_attributes=alarm_attributes, device_id=device_id, endpoint_id=endpoint_id)
             elif is_consumption(type_of_id):
                 await self.parse_consumption_endpoint(endpoint_id, device_id, endpoint, friendly_name)
             else:
-                print("TYPE INCONNU pour {}".format(unique_id))
+                print("Unknown type for {}".format(unique_id))
         except Exception as e:
             print('msg_data error in parsing !')
             print(e)
@@ -482,7 +415,6 @@ class BytesIOSocket:
 
 class HTTPRequest(BaseHTTPRequestHandler):
     def __init__(self, request_text):
-        #self.rfile = StringIO(request_text)
         self.raw_requestline = request_text
         self.error_code = self.error_message = None
         self.parse_request()
