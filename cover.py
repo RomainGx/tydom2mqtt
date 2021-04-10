@@ -1,6 +1,7 @@
 import json
 
 from sensors import Sensor
+from devices.utils import get_device_info
 
 COVER_COMMAND_TOPIC = "homeassistant/cover/tydom/{id}/set_positionCmd"
 COVER_CONFIG_TOPIC = "homeassistant/cover/tydom/{id}/config"
@@ -33,12 +34,7 @@ class Cover:
             'payload_close': "DOWN",
             'payload_stop': "STOP",
             'retain': 'false',
-            'device': {
-                'manufacturer': 'Delta Dore',
-                'model': 'Volet',
-                'name': self.name,
-                'identifiers': self.id
-            }
+            'device': get_device_info(self.name, self.id, "Volet")
         }
 
         if self.mqtt is not None:

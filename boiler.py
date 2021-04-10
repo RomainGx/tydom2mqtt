@@ -1,4 +1,5 @@
 import json
+from devices.utils import get_device_info
 
 CLIMATE_CONFIG_TOPIC = "homeassistant/climate/tydom/{id}/config"
 SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
@@ -49,11 +50,7 @@ class Boiler:
         self.tydom_client = tydom_client
 
     async def setup(self):
-        self.device = {
-            'manufacturer': 'Delta Dore',
-            'name': self.name,
-            'identifiers': self.device_id
-        }
+        self.device = get_device_info(self.name, self.device_id)
         self.config = {'unique_id': self.id}
 
         # Check if device is an outer temperature sensor

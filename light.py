@@ -1,6 +1,7 @@
 import json
 
 from sensors import Sensor
+from devices.utils import get_device_info
 
 LIGHT_COMMAND_TOPIC = "homeassistant/light/tydom/{id}/set_levelCmd"
 LIGHT_CONFIG_TOPIC = "homeassistant/light/tydom/{id}/config"
@@ -40,12 +41,7 @@ class Light:
             'json_attributes_topic': LIGHT_ATTRIBUTES_TOPIC.format(id=self.id),
             'on_command_type': "brightness",
             'retain': 'false',
-            'device': {
-                'manufacturer': 'Delta Dore',
-                'model': 'Lumiere',
-                'name': self.name,
-                'identifiers': self.device_id
-            }
+            'device': get_device_info(self.name, self.device_id, "Lumiere")
         }
         # self.config['set_level_topic'] = light_set_level_topic.format(id=self.id)
         # print(self.config)

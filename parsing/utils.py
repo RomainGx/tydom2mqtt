@@ -1,4 +1,6 @@
 from devices import devicesKeywords
+from devices.utils import is_shutter, is_light, is_window, is_door, is_boiler, is_consumption, is_alarm, is_electric
+from tydomMessagehandler import device_name_dict, device_type_dict, device_endpoint_dict
 
 
 def parse_light_endpoint(endpoint):
@@ -59,3 +61,24 @@ def parse_alarm_endpoint(endpoint):
             alarm_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
 
     return alarm_attributes
+
+
+def parse_config_data(parsed):
+    for endpoint_info in parsed["endpoints"]:
+        last_usage = str(endpoint_info["last_usage"])
+        device_unique_id = str(endpoint_info["id_endpoint"]) + "_" + str(endpoint_info["id_device"])
+
+        if is_shutter(last_usage) or is_light(last_usage) or is_window(last_usage) or is_door(last_usage) or is_boiler(last_usage) or is_consumption(last_usage):
+            device_name_dict[device_unique_id] = endpoint_info["name"]
+            device_type_dict[device_unique_id] = endpoint_info["last_usage"]
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+        elif is_alarm(last_usage):
+            device_name_dict[device_unique_id] = "Tyxal Alarm"
+            device_type_dict[device_unique_id] = 'alarm'
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+        elif is_electric(last_usage):
+            device_name_dict[device_unique_id] = endpoint_info["name"]
+            device_type_dict[device_unique_id] = 'boiler'
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+
+    print('Configuration updated')

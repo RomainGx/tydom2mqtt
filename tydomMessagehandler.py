@@ -1,16 +1,11 @@
 import json
 import logging
 import sys
-from http.client import HTTPResponse
-from http.server import BaseHTTPRequestHandler
-from io import BytesIO
-
-import urllib3
 
 from alarm_control_panel import Alarm
 from boiler import Boiler
+from communication.utils import *
 from cover import Cover
-from devices.utils import *
 from light import Light
 from parsing.utils import *
 from sensors import Sensor
@@ -21,6 +16,45 @@ _LOGGER = logging.getLogger(__name__)
 device_name_dict = dict()
 device_endpoint_dict = dict()
 device_type_dict = dict()
+
+
+def print_incoming_message_exception(bytes_str):
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    print('RAW INCOMING :')
+    print(bytes_str)
+    print('END RAW')
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+
+def print_global_incoming_message_exception(bytes_str, incoming, error):
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print('receiveMessage error')
+    print('RAW :')
+    print(bytes_str)
+    print("Incoming payload :")
+    print(incoming)
+    print("Error :")
+    print(error)
+    print('Exiting to ensure systemd restart....')
+
+
+def get_type_from_id(unique_id):
+    device_type = ""
+    if len(device_type_dict) != 0 and unique_id in device_type_dict.keys():
+        device_type = device_type_dict[unique_id]
+    else:
+        print('{} not in dic device_type'.format(unique_id))
+
+    return device_type
+
+
+def get_name_from_id(unique_id):
+    name = ""
+    if len(device_name_dict) != 0 and unique_id in device_name_dict.keys():
+        name = device_name_dict[unique_id]
+    else:
+        print('{} not in dic device_name'.format(unique_id))
+    return name
 
 
 class TydomMessageHandler():
@@ -49,11 +83,7 @@ class TydomMessageHandler():
                         incoming = self.parse_put_response(bytes_str)
                         await self.parse_response(incoming)
                     except:
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                        print('RAW INCOMING :')
-                        print(bytes_str)
-                        print('END RAW')
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                        print_incoming_message_exception(bytes_str)
                 elif "scn" in first:
                     try:
                         incoming = get(bytes_str)
@@ -61,52 +91,29 @@ class TydomMessageHandler():
                         print('Scenarii message processed !')
                         print("##################################")
                     except:
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                        print('RAW INCOMING :')
-                        print(bytes_str)
-                        print('END RAW')
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                        print_incoming_message_exception(bytes_str)
                 elif "POST" in first:
                     try:
                         incoming = self.parse_put_response(bytes_str)
                         await self.parse_response(incoming)
                         print('POST message processed !')
                     except:
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                        print('RAW INCOMING :')
-                        print(bytes_str)
-                        print('END RAW')
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                        print_incoming_message_exception(bytes_str)
                 elif "HTTP/1.1" in first:
-                    response = self.response_from_bytes(bytes_str[len(self.cmd_prefix):])
+                    response = response_from_bytes(bytes_str[len(self.cmd_prefix):])
                     incoming = response.data.decode("utf-8")
                     try:
                         await self.parse_response(incoming)
                     except:
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                        print('RAW INCOMING :')
-                        print(bytes_str)
-                        print('END RAW')
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                        print_incoming_message_exception(bytes_str)
                 else:
                     print("Didn't detect incoming type, here it is :")
-                    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                    print('RAW INCOMING :')
-                    print(bytes_str)
-                    print('END RAW')
-                    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                    print_incoming_message_exception(bytes_str)
 
             except Exception as e:
-                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print('receiveMessage error')
-                print('RAW :')
-                print(bytes_str)
-                print("Incoming payload :")
-                print(incoming)
-                print("Error :")
-                print(e)
-                print('Exiting to ensure systemd restart....')
-                sys.exit()  # Exit all to ensure systemd restart
+                print_global_incoming_message_exception(bytes_str, incoming, e)
+                # Exit all to ensure systemd restart
+                sys.exit()
 
     # Basic response parsing. Typically GET responses + instanciate covers and alarm class for updating data
     async def parse_response(self, incoming):
@@ -132,7 +139,6 @@ class TydomMessageHandler():
                 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 print('Incoming message type : Info detected')
                 msg_type = 'msg_info'
-                # print(data)
             else:
                 print('Incoming message type : no type detected')
                 print(data)
@@ -141,13 +147,10 @@ class TydomMessageHandler():
                 try:
                     if msg_type == 'msg_config':
                         parsed = json.loads(data)
-                        # print(parsed)
-                        await self.parse_config_data(parsed=parsed)
-
+                        parse_config_data(parsed)
                     elif msg_type == 'msg_data':
                         parsed = json.loads(data)
-                        # print(parsed)
-                        await self.parse_devices_data(parsed=parsed)
+                        await self.parse_devices_data(parsed)
                     elif msg_type == 'msg_html':
                         print("HTML Response ?")
                     elif msg_type == 'msg_info':
@@ -156,35 +159,13 @@ class TydomMessageHandler():
                         # Default json dump
                         print()
                         print(json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
-                except Exception as e:
+                except Exception as error:
                     print('Cannot parse response !')
-                    # print('Response :')
-                    # print(data)
-                    if (e != 'Expecting value: line 1 column 1 (char 0)'):
-                        print("Error : ", e)
+                    if error != 'Expecting value: line 1 column 1 (char 0)':
+                        print("Error : ", error)
                         print(parsed)
             print('Incoming data parsed successfully !')
-            return(0)
-
-    async def parse_config_data(self, parsed):
-        for endpoint_info in parsed["endpoints"]:
-            last_usage = str(endpoint_info["last_usage"])
-            device_unique_id = str(endpoint_info["id_endpoint"]) + "_" + str(endpoint_info["id_device"])
-
-            if is_shutter(last_usage) or is_light(last_usage) or is_window(last_usage) or is_door(last_usage) or is_boiler(last_usage) or is_consumption(last_usage):
-                device_name_dict[device_unique_id] = endpoint_info["name"]
-                device_type_dict[device_unique_id] = endpoint_info["last_usage"]
-                device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
-            elif is_alarm(last_usage):
-                device_name_dict[device_unique_id] = "Tyxal Alarm"
-                device_type_dict[device_unique_id] = 'alarm'
-                device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
-            elif is_electric(last_usage):
-                device_name_dict[device_unique_id] = endpoint_info["name"]
-                device_type_dict[device_unique_id] = 'boiler'
-                device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
-
-        print('Configuration updated')
+            return 0
 
     async def parse_consumption_endpoint(self, endpoint_id, device_id, endpoint, friendly_name):
         attr_consumption = {}
@@ -206,7 +187,7 @@ class TydomMessageHandler():
                 if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION_UNITS:
                     attr_consumption['unit_of_measurement'] = devicesKeywords.CONSUMPTION_UNITS[endpoint_attributes["name"]]
 
-                new_consumption = Sensor(elem_name=endpoint_attributes["name"], tydom_attributes_payload=attr_consumption, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                new_consumption = Sensor(endpoint_attributes["name"], attr_consumption, 'useless', self.mqtt_client)
                 await new_consumption.update()
 
         return attr_consumption
@@ -240,17 +221,15 @@ class TydomMessageHandler():
             # "enum_values": ["OFF", "ON", "TEST", "ZONE", "MAINTENANCE"]
             # }
 
-            if ('alarmState' in attr_alarm and attr_alarm['alarmState'] == "ON") or ('alarmState' in attr_alarm and attr_alarm['alarmState']) == "QUIET":
+            if 'alarmState' in attr_alarm and (attr_alarm['alarmState'] == "ON" or attr_alarm['alarmState'] == "QUIET"):
                 state = "triggered"
-
             elif 'alarmState' in attr_alarm and attr_alarm['alarmState'] == "DELAYED":
                 state = "pending"
 
             if 'alarmSOS' in attr_alarm and attr_alarm['alarmSOS'] == "true":
                 state = "triggered"
                 sos_state = True
-
-            elif 'alarmMode' in attr_alarm and attr_alarm ["alarmMode"] == "ON":
+            elif 'alarmMode' in attr_alarm and attr_alarm["alarmMode"] == "ON":
                 state = "armed_away"
             elif 'alarmMode' in attr_alarm and attr_alarm["alarmMode"] == "ZONE":
                 state = "armed_home"
@@ -267,9 +246,8 @@ class TydomMessageHandler():
                 print("SOS !")
 
             if not (state is None):
-                alarm = Alarm(current_state=state, tydom_attributes=attr_alarm, mqtt=self.mqtt_client)
+                alarm = Alarm(state, attr_alarm, self.mqtt_client)
                 await alarm.update()
-
         except Exception as e:
             print("Error in alarm parsing !")
             print(e)
@@ -278,8 +256,8 @@ class TydomMessageHandler():
         try:
             endpoint_id = endpoint["id"]
             unique_id = str(endpoint_id) + "_" + str(device_id)
-            name_of_id = self.get_name_from_id(unique_id)
-            type_of_id = self.get_type_from_id(unique_id)
+            name_of_id = get_name_from_id(unique_id)
+            type_of_id = get_type_from_id(unique_id)
             print("Traite endpoint {}, device {} ; name = {} (type {})".format(endpoint_id, device_id, name_of_id, type_of_id))
             print(endpoint)
 
@@ -290,37 +268,30 @@ class TydomMessageHandler():
             if is_light(type_of_id):
                 light_attributes = parse_light_endpoint(endpoint)
                 if len(light_attributes.keys()) > 0:
-                    new_light = Light(tydom_attributes=light_attributes, device_id=device_id, endpoint_id=endpoint_id, friendly_name=friendly_name, mqtt=self.mqtt_client)
+                    new_light = Light(light_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
                     await new_light.update()
             elif is_shutter(type_of_id):
                 cover_attributes = parse_cover_endpoint(endpoint)
                 if len(cover_attributes.keys()) > 0:
-                    new_cover = Cover(tydom_attributes=cover_attributes, device_id=device_id, endpoint_id=endpoint_id, friendly_name=friendly_name, mqtt=self.mqtt_client)
+                    new_cover = Cover(cover_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
                     await new_cover.update()
             elif is_door(type_of_id):
                 door_attributes = parse_door_endpoint(endpoint)
                 if len(door_attributes.keys()) > 0:
+                    tydom_attributes = {
+                        'device_id': device_id,
+                        'endpoint_id': endpoint_id,
+                        'id': str(device_id) + '_' + str(endpoint_id),
+                        'name': friendly_name
+                    }
                     if 'openState' in door_attributes:
-                        tydom_attributes = {
-                            'device_id': device_id,
-                            'endpoint_id': endpoint_id,
-                            'id': str(device_id) + '_' + str(endpoint_id),
-                            'name': friendly_name,
-                            'openState': door_attributes['openState']
-                        }
-                        new_door = Sensor(elem_name='openState', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                        tydom_attributes['openState'] = door_attributes['openState']
+                        new_door = Sensor('openState', tydom_attributes, 'useless', mqtt=self.mqtt_client)
                         await new_door.update()
                     if 'intrusionDetect' in door_attributes:
-                        tydom_attributes = {
-                            'device_id': device_id,
-                            'endpoint_id': endpoint_id,
-                            'id': str(device_id) + '_' + str(endpoint_id),
-                            'name': friendly_name,
-                            'intrusionDetect': door_attributes['intrusionDetect']
-                        }
-                        new_door = Sensor(elem_name='intrusionDetect', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                        tydom_attributes['intrusionDetect'] = door_attributes['intrusionDetect']
+                        new_door = Sensor('intrusionDetect', tydom_attributes, 'useless', mqtt=self.mqtt_client)
                         await new_door.update()
-
             elif is_window(type_of_id):
                 window_attributes = parse_window_endpoint(endpoint)
                 if len(window_attributes.keys()) > 0:
@@ -331,17 +302,17 @@ class TydomMessageHandler():
                         'name': friendly_name,
                         'openState': window_attributes['openState']
                     }
-                    new_window = Sensor(elem_name='openState', tydom_attributes_payload=tydom_attributes, attributes_topic_from_device='useless', mqtt=self.mqtt_client)
+                    new_window = Sensor('openState', tydom_attributes, 'useless', mqtt=self.mqtt_client)
                     await new_window.update()
             elif is_boiler(type_of_id):
                 attr_boiler = parse_boiler_endpoint(endpoint)
                 if len(attr_boiler.keys()) > 0:
-                    new_boiler = Boiler(tydom_attributes=attr_boiler, device_id = device_id, endpoint_id = endpoint_id, friendly_name = friendly_name, tydom_client=self.tydom_client, mqtt=self.mqtt_client)
+                    new_boiler = Boiler(attr_boiler, device_id, endpoint_id, friendly_name, self.tydom_client, self.mqtt_client)
                     await new_boiler.update()
             elif is_alarm(type_of_id):
                 alarm_attributes = parse_alarm_endpoint(endpoint)
                 if len(alarm_attributes.keys()) > 0:
-                    await self.configure_alarm(alarm_attributes=alarm_attributes, device_id=device_id, endpoint_id=endpoint_id)
+                    await self.configure_alarm(alarm_attributes, device_id, endpoint_id)
             elif is_consumption(type_of_id):
                 await self.parse_consumption_endpoint(endpoint_id, device_id, endpoint, friendly_name)
             else:
@@ -354,7 +325,7 @@ class TydomMessageHandler():
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
-                    await self.parse_endpoint(device_id = i["id"], endpoint = endpoint)
+                    await self.parse_endpoint(device_id=i["id"], endpoint=endpoint)
 
     # PUT response DIRTY parsing
     def parse_put_response(self, bytes_str):
@@ -374,51 +345,3 @@ class TydomMessageHandler():
                 i = i + 2
         parsed = json.loads(output)
         return json.dumps(parsed)
-
-    ######### FUNCTIONS
-
-    def response_from_bytes(self, data):
-        sock = BytesIOSocket(data)
-        response = HTTPResponse(sock)
-        response.begin()
-        return urllib3.HTTPResponse.from_httplib(response)
-
-    def put_response_from_bytes(self, data):
-        request = HTTPRequest(data)
-        return request
-
-    def get_type_from_id(self, id):
-        deviceType = ""
-        if len(device_type_dict) != 0 and id in device_type_dict.keys():
-            deviceType = device_type_dict[id]
-        else:
-            print('{} not in dic device_type'.format(id))
-
-        return(deviceType)
-
-    # Get pretty name for a device id
-    def get_name_from_id(self, id):
-        name = ""
-        if len(device_name_dict) != 0 and id in device_name_dict.keys():
-            name = device_name_dict[id]
-        else:
-            print('{} not in dic device_name'.format(id))
-        return name
-
-
-class BytesIOSocket:
-    def __init__(self, content):
-        self.handle = BytesIO(content)
-
-    def makefile(self, mode):
-        return self.handle
-
-class HTTPRequest(BaseHTTPRequestHandler):
-    def __init__(self, request_text):
-        self.raw_requestline = request_text
-        self.error_code = self.error_message = None
-        self.parse_request()
-
-    def send_error(self, code, message):
-        self.error_code = code
-        self.error_message = message

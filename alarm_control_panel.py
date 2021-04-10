@@ -1,6 +1,7 @@
 import json
 
 from sensors import Sensor
+from devices.utils import get_device_info
 
 ALARM_TOPIC = "alarm_control_panel/tydom/#"
 ALARM_CONFIG_TOPIC = "homeassistant/alarm_control_panel/tydom/{id}/config"
@@ -28,12 +29,7 @@ class Alarm:
         self.config = {
             'name': self.name,
             'unique_id': self.id,
-            'device': {
-                'manufacturer': 'Delta Dore',
-                'model': 'Tyxal',
-                'name': self.name,
-                'identifiers': self.device_id
-            },
+            'device': get_device_info(self.name, self.device_id, "Tyxal"),
             'command_topic': ALARM_COMMAND_TOPIC.format(id=self.id),
             'state_topic': ALARM_STATE_TOPIC.format(id=self.id),
             'code_arm_required': 'false',

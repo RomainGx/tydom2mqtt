@@ -1,4 +1,5 @@
 import json
+from devices.utils import get_device_info
 
 SENSOR_TOPIC = "homeassistant/sensor/tydom/#"
 SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
@@ -89,12 +90,7 @@ class Sensor:
     # vibration: on means vibration detected, off means no vibration (clear)
     # window: on means open, off means closed
     async def setup(self):
-        self.device = {
-            'manufacturer': 'Delta Dore',
-            'model': 'Sensor',
-            'name': self.device_name,
-            'identifiers': self.parent_device_id
-        }
+        self.device = get_device_info(self.device_name, self.parent_device_id, "Sensor")
 
         self.config_sensor_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
 

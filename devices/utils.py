@@ -28,3 +28,14 @@ def is_alarm(device_type):
 
 def is_electric(device_type):
     return device_type == 'electric'
+
+
+def get_device_info(device_name, device_id, model=None):
+    device = {
+        'manufacturer': 'Delta Dore',
+        'name': device_name,
+        'identifiers': device_id
+    }
+    if model is not None:
+        device['model'] = model
+    return device
