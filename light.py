@@ -80,7 +80,7 @@ class Light:
                 'name': self.name,
                 attribute['name']: attribute['value']
             }
-            new_sensor = Sensor(elem_name=attribute['name'], tydom_attributes_payload=tydom_attributes_payload, attributes_topic_from_device=self.config['json_attributes_topic'], mqtt=self.mqtt)
+            new_sensor = Sensor(attribute['name'], tydom_attributes_payload, self.config['json_attributes_topic'], self.mqtt)
             await new_sensor.update()
 
     async def put_level(tydom_client, device_id, light_id, level):

@@ -6,6 +6,7 @@ from alarm_control_panel import Alarm
 from boiler import Boiler
 from communication.utils import *
 from cover import Cover
+from devices.utils import *
 from light import Light
 from parsing.utils import *
 from sensors import Sensor
@@ -55,6 +56,27 @@ def get_name_from_id(unique_id):
     else:
         print('{} not in dic device_name'.format(unique_id))
     return name
+
+
+def parse_config_data(parsed):
+    for endpoint_info in parsed["endpoints"]:
+        last_usage = str(endpoint_info["last_usage"])
+        device_unique_id = str(endpoint_info["id_endpoint"]) + "_" + str(endpoint_info["id_device"])
+
+        if is_shutter(last_usage) or is_light(last_usage) or is_window(last_usage) or is_door(last_usage) or is_boiler(last_usage) or is_consumption(last_usage):
+            device_name_dict[device_unique_id] = endpoint_info["name"]
+            device_type_dict[device_unique_id] = endpoint_info["last_usage"]
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+        elif is_alarm(last_usage):
+            device_name_dict[device_unique_id] = "Tyxal Alarm"
+            device_type_dict[device_unique_id] = 'alarm'
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+        elif is_electric(last_usage):
+            device_name_dict[device_unique_id] = endpoint_info["name"]
+            device_type_dict[device_unique_id] = 'boiler'
+            device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
+
+    print('Configuration updated')
 
 
 class TydomMessageHandler():
@@ -200,8 +222,8 @@ class TydomMessageHandler():
             'alarm_name': "Tyxal Alarm",
             'name': "Tyxal Alarm"
         }
-        for attribute in alarm_attributes.keys():
-            attr_alarm[attribute['name']] = attribute['value']
+        for attribute_name in alarm_attributes.keys():
+            attr_alarm[attribute_name] = alarm_attributes[attribute_name]
 
         state = None
         sos_state = False

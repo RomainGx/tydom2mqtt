@@ -61,16 +61,16 @@ class Cover:
         # return(update_pub)
 
     async def update_sensors(self):
-        for attributeName in self.attributes.keys():
+        for attribute_name in self.attributes.keys():
             tydom_attributes_payload = {
                 'device_id': self.device_id,
                 'endpoint_id': self.endpoint_id,
                 'id': self.id,
                 'name': self.name,
                 'device_class': 'opening',
-                attributeName: self.attributes[attributeName]
+                attribute_name: self.attributes[attribute_name]
             }
-            new_sensor = Sensor(elem_name=attributeName, tydom_attributes_payload=tydom_attributes_payload, attributes_topic_from_device=self.config['json_attributes_topic'], mqtt=self.mqtt)
+            new_sensor = Sensor(attribute_name, tydom_attributes_payload, self.config['json_attributes_topic'], self.mqtt)
             await new_sensor.update()
 
     async def put_position(tydom_client, device_id, cover_id, position):
