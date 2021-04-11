@@ -312,6 +312,7 @@ class TydomMessageHandler():
                         await new_door.update()
                     if 'intrusionDetect' in door_attributes:
                         tydom_attributes['intrusionDetect'] = door_attributes['intrusionDetect']
+                        tydom_attributes['device_class'] = 'door'
                         new_door = Sensor('intrusionDetect', tydom_attributes, 'useless', mqtt=self.mqtt_client)
                         await new_door.update()
             elif is_window(type_of_id):

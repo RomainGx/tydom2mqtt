@@ -21,7 +21,7 @@ class Sensor:
 
         # self.json_attributes_topic = attributes_topic_from_device #State extracted from json, but it will make sensor not in payload to be considerd offline....
         self.parent_device_id = str(tydom_attributes_payload['id'])
-        self.id = elem_name + '_tydom_' + str(tydom_attributes_payload['id'])
+        self.id = elem_name + '_tydom_' + self.parent_device_id
         self.device_name = tydom_attributes_payload['name']
         self.name = elem_name + '_tydom_' + '_' + self.device_name.replace(" ", "_")
         if 'device_class' in tydom_attributes_payload.keys():
@@ -118,8 +118,7 @@ class Sensor:
         self.config['state_topic'] = self.json_attributes_topic
 
         if self.mqtt is not None:
-            self.mqtt.mqtt_client.publish((self.config_topic).lower(), json.dumps(self.config), qos=0, retain=True)  # sensor Config
-        # print("CONFIG : ",(self.config_topic).lower(), json.dumps(self.config))
+            self.mqtt.mqtt_client.publish(self.config_topic.lower(), json.dumps(self.config), qos=0, retain=True)
 
     async def update(self):
         # 3 items are necessary :

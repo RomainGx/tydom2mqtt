@@ -13,6 +13,7 @@ class Alarm:
     def __init__(self, current_state, tydom_attributes=None, mqtt=None):
         self.attributes = tydom_attributes
         self.device_id = tydom_attributes['id']
+        self.id = 'tyxal_alarm_' + self.device_id
         self.current_state = current_state
         self.mqtt = mqtt
         self.device = {}
@@ -21,8 +22,8 @@ class Alarm:
     async def setup(self):
         self.config = {
             'name': self.attributes['name'],
-            'unique_id': self.device_id,
-            'device': get_device_info(self.attributes['name'], self.device_id, "Tyxal"),
+            'unique_id': self.id,
+            'device': get_device_info(self.attributes['name'], self.device_id, "Alarm"),
             'command_topic': ALARM_COMMAND_TOPIC.format(id=self.device_id),
             'state_topic': ALARM_STATE_TOPIC.format(id=self.device_id),
             'code_arm_required': 'false',
