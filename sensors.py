@@ -1,13 +1,11 @@
 import json
 from devices.utils import get_device_info
 
-SENSOR_TOPIC = "homeassistant/sensor/tydom/#"
 SENSOR_CONFIG_TOPIC = "homeassistant/sensor/tydom/{id}/config"
-SENSOR_JSON_ATTRIBUTES_TOPIC = "homeassistant/sensor/tydom/{id}/state"
+SENSOR_STATE_TOPIC = "homeassistant/sensor/tydom/{id}/state"
 
-BINARY_SENSOR_TOPIC = "homeassistant/binary_sensor/tydom/#"
 BINARY_SENSOR_CONFIG_TOPIC = "homeassistant/binary_sensor/tydom/{id}/config"
-BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC = "homeassistant/binary_sensor/tydom/{id}/state"
+BINARY_SENSOR_STATE_TOPIC = "homeassistant/binary_sensor/tydom/{id}/state"
 
 # State topic can be the same as the original device attributes topic !
 class Sensor:
@@ -31,28 +29,16 @@ class Sensor:
             self.unit_of_measurement = tydom_attributes_payload['unit_of_measurement']
 
         self.mqtt = mqtt
-
         self.binary = False
-        # self.device_class = None
         self.config_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
 
         if self.elem_value is False or self.elem_value is True:
             self.binary = True
-            self.json_attributes_topic = BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC.format(id=self.id)
+            self.json_attributes_topic = BINARY_SENSOR_STATE_TOPIC.format(id=self.id)
             self.config_topic = BINARY_SENSOR_CONFIG_TOPIC.format(id=self.id)
-            # if 'efect' in self.elem_name:
-            #     self.device_class = 'problem'
-            # elif 'ntrusion' in self.elem_name or 'zone' in self.elem_name or 'alarm' in self.elem_name:
-            #     self.device_class = 'safety'
-            # elif 'gsm' in self.elem_name:
-            #     self.device_class = 'signal_strength'
         else:
-            self.json_attributes_topic = SENSOR_JSON_ATTRIBUTES_TOPIC.format(id=self.id)
+            self.json_attributes_topic = SENSOR_STATE_TOPIC.format(id=self.id)
             self.config_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
-            # if 'emperature' in self.elem_name:
-            #     self.device_class = 'temperature'
-       
-
 
     # SENSOR:
     # None: Generic sensor. This is the default and doesn’t need to be set.
@@ -103,15 +89,6 @@ class Sensor:
             self.config['unit_of_measurement'] = self.unit_of_measurement
         except AttributeError:
             pass
-        # self.config['device_class'] = self.device_class
-        
-        #
-        # self.config['value_template'] = "{{ value_json."+self.elem_name+" }}"
-        # self.config['attributes'] = self.attributes
-
-        # DISABLED, ALL VALUES
-        # value_json = "value_json."+self.elem_name+'"'
-        # self.config['value_template'] = "{% if "+value_json+" is defined and "+value_json+" != '' %} {{ value_json."+value_json+" }} {% else %} {{ states('sensor." + self.name + "') }} {% endif %}"
 
         # self.config['force_update'] = True
         self.config['device'] = self.device
