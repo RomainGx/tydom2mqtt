@@ -67,7 +67,6 @@ class Cover:
                 'endpoint_id': self.endpoint_id,
                 'id': self.id,
                 'name': self.name,
-                'device_class': 'opening',
                 attribute_name: self.attributes[attribute_name]
             }
             new_sensor = Sensor(attribute_name, tydom_attributes_payload, self.config['json_attributes_topic'], self.mqtt)

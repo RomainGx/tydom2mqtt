@@ -36,7 +36,7 @@ class Sensor:
         # self.device_class = None
         self.config_topic = SENSOR_CONFIG_TOPIC.format(id=self.id)
 
-        if self.elem_value == False or self.elem_value == True:
+        if self.elem_value is False or self.elem_value is True:
             self.binary = True
             self.json_attributes_topic = BINARY_SENSOR_JSON_ATTRIBUTES_TOPIC.format(id=self.id)
             self.config_topic = BINARY_SENSOR_CONFIG_TOPIC.format(id=self.id)
@@ -125,7 +125,7 @@ class Sensor:
         # - config to config config_sensor_topic + config payload is the schema
         # - state payload to state topic in config with all attributes
 
-        if 'name' in self.elem_name or 'device_type' in self.elem_name or self.elem_value == None:
+        if 'name' in self.elem_name or 'device_type' in self.elem_name or self.elem_value is None:
             pass  # OOOOOOOOOH that's quick and dirty
         else:
             await self.setup()  # Publish config
@@ -142,6 +142,6 @@ class Sensor:
                         payload_value = "OFF"
                 self.mqtt.mqtt_client.publish(self.json_attributes_topic, payload_value, qos=0) #sensor State
             if not self.binary:
-                print("Sensor created / updated : ", self.name, payload_value, self.id)
+                print("Sensor created / updated : ", self.name, payload_value, self.elem_value, self.id)
             else:
-                print("Binary sensor created / updated : ", self.name, payload_value, self.id)
+                print("Binary sensor created / updated : ", self.name, payload_value, self.elem_value, self.id)
