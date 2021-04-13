@@ -51,7 +51,7 @@ class Alarm:
     async def update_sensors(self):
         for elem_name in self.attributes.keys():
             if not elem_name == 'device_type' or not elem_name == 'id':
-                new_sensor = Sensor(elem_name, self.attributes, self.config['json_attributes_topic'], self.mqtt)
+                new_sensor = Sensor(elem_name, self.attributes, self.mqtt)
                 await new_sensor.update()
 
     async def put_alarm_state(tydom_client, device_id, alarm_id, home_zone, night_zone, asked_state=None):

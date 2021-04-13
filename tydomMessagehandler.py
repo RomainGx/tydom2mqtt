@@ -209,7 +209,7 @@ class TydomMessageHandler():
                 if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION_UNITS:
                     attr_consumption['unit_of_measurement'] = devicesKeywords.CONSUMPTION_UNITS[endpoint_attributes["name"]]
 
-                new_consumption = Sensor(endpoint_attributes["name"], attr_consumption, 'useless', self.mqtt_client)
+                new_consumption = Sensor(endpoint_attributes["name"], attr_consumption, self.mqtt_client)
                 await new_consumption.update()
 
         return attr_consumption
@@ -308,12 +308,12 @@ class TydomMessageHandler():
                     }
                     if 'openState' in door_attributes:
                         tydom_attributes['openState'] = door_attributes['openState']
-                        new_door = Sensor('openState', tydom_attributes, 'useless', mqtt=self.mqtt_client)
+                        new_door = Sensor('openState', tydom_attributes, self.mqtt_client)
                         await new_door.update()
                     if 'intrusionDetect' in door_attributes:
                         tydom_attributes['intrusionDetect'] = door_attributes['intrusionDetect']
                         tydom_attributes['device_class'] = 'door'
-                        new_door = Sensor('intrusionDetect', tydom_attributes, 'useless', mqtt=self.mqtt_client)
+                        new_door = Sensor('intrusionDetect', tydom_attributes, self.mqtt_client)
                         await new_door.update()
             elif is_window(type_of_id):
                 window_attributes = parse_window_endpoint(endpoint)
@@ -325,7 +325,7 @@ class TydomMessageHandler():
                         'name': friendly_name,
                         'openState': window_attributes['openState']
                     }
-                    new_window = Sensor('openState', tydom_attributes, 'useless', mqtt=self.mqtt_client)
+                    new_window = Sensor('openState', tydom_attributes, self.mqtt_client)
                     await new_window.update()
             elif is_boiler(type_of_id):
                 attr_boiler = parse_boiler_endpoint(endpoint)

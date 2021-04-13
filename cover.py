@@ -9,7 +9,6 @@ COVER_POSITION_TOPIC = "homeassistant/cover/tydom/{id}/current_position"
 COVER_SET_POSITION_TOPIC = "homeassistant/cover/tydom/{id}/set_position"
 COVER_ATTRIBUTES_TOPIC = "homeassistant/cover/tydom/{id}/attributes"
 
-
 class Cover:
     def __init__(self, tydom_attributes, device_id, endpoint_id, friendly_name, set_position=None, mqtt=None):
         self.attributes = tydom_attributes
@@ -20,6 +19,7 @@ class Cover:
         self.name = friendly_name
         self.current_position = tydom_attributes['position']
         self.set_position = set_position
+        self.position_topic = COVER_POSITION_TOPIC.format(id=self.id, current_position=self.current_position)
         self.config = {}
         self.config_topic = COVER_CONFIG_TOPIC.format(id=self.id)
         self.mqtt = mqtt
@@ -51,8 +51,6 @@ class Cover:
             print("Cover sensors Error :")
             print(e)
 
-        self.position_topic = COVER_POSITION_TOPIC.format(id=self.id, current_position=self.current_position)
-
         if self.mqtt is not None:
             self.mqtt.mqtt_client.publish(self.position_topic, self.current_position, qos=0, retain=True)
             self.mqtt.mqtt_client.publish(self.config['json_attributes_topic'], self.attributes, qos=0)
@@ -67,7 +65,7 @@ class Cover:
                 'name': self.name,
                 attribute_name: self.attributes[attribute_name]
             }
-            new_sensor = Sensor(attribute_name, tydom_attributes_payload, self.config['json_attributes_topic'], self.mqtt)
+            new_sensor = Sensor(attribute_name, tydom_attributes_payload, self.mqtt)
             await new_sensor.update()
 
     async def put_position(tydom_client, device_id, cover_id, position):

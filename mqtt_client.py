@@ -122,7 +122,7 @@ class MqttHassio():
             value = get_value(payload)
             ids = get_ids(topic)
             print('levelCmd', value, ids["device_id"], ids["endpoint_id"])
-            await Light.put_levelCmd(tydom_client=self.tydom, device_id=ids["device_id"], light_id=ids["endpoint_id"], level_cmd=str(value))
+            await Light.put_level_cmd(tydom_client=self.tydom, device_id=ids["device_id"], light_id=ids["endpoint_id"], level_cmd=str(value))
         elif ('set_level' in str(topic)) and not ('set_levelCmd' in str(topic)):
             print('Incoming MQTT set_position request : ', topic, json.loads(payload))
             value = json.loads(payload)
@@ -145,7 +145,7 @@ class MqttHassio():
             print('Incoming MQTT set_hvacMode request : ', topic, value)
             ids = get_ids(topic)
             print('put_hvacMode', value, ids["device_id"], ids["endpoint_id"])
-            await Boiler.put_hvacMode(tydom_client=self.tydom, device_id=ids["device_id"], boiler_id=ids["endpoint_id"], set_hvacMode=str(value))
+            await Boiler.put_hvac_mode(tydom_client=self.tydom, device_id=ids["device_id"], boiler_id=ids["endpoint_id"], set_hvac_mode=str(value))
         elif 'set_thermicLevel' in str(topic):
             value = get_value(payload)
             print('Incoming MQTT set_thermicLevel request : ', topic, value)
