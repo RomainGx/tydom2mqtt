@@ -14,6 +14,10 @@ def is_consumption(device_type):
     return device_type == 'conso'
 
 
+def is_dvi(device_type):
+    return device_type == 'klineWindowSliding'
+
+
 def is_window(device_type):
     return device_type in ['window', 'windowFrench', 'klineWindowFrench']
 
