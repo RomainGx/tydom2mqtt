@@ -63,7 +63,7 @@ def parse_config_data(parsed):
         last_usage = str(endpoint_info["last_usage"])
         device_unique_id = str(endpoint_info["id_endpoint"]) + "_" + str(endpoint_info["id_device"])
 
-        if is_shutter(last_usage) or is_light(last_usage) or is_window(last_usage) or is_door(last_usage) or is_boiler(last_usage) or is_consumption(last_usage) or is_dvi(last_usage):
+        if is_shutter(last_usage) or is_light(last_usage) or is_window(last_usage) or is_door(last_usage) or is_boiler(last_usage) or is_consumption(last_usage):
             device_name_dict[device_unique_id] = endpoint_info["name"]
             device_type_dict[device_unique_id] = endpoint_info["last_usage"]
             device_endpoint_dict[device_unique_id] = endpoint_info["id_endpoint"]
@@ -141,11 +141,11 @@ class TydomMessageHandler():
     async def parse_response(self, incoming):
         data = incoming
         msg_type = None
-
         first = str(data[:40])
+
         # Detect type of incoming data
         if data != '':
-            if "id_catalog" in data:  # search for id_catalog in all data to be sure to get configuration detected
+            if "id_catalog" in data:
                 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 print('Incoming message type : config detected')
                 msg_type = 'msg_config'
@@ -227,22 +227,7 @@ class TydomMessageHandler():
 
         state = None
         sos_state = False
-        maintenance_mode = False
-        out = None
         try:
-            # {
-            # "name": "alarmState",
-            # "type": "string",
-            # "permission": "r",
-            # "enum_values": ["OFF", "DELAYED", "ON", "QUIET"]
-            # },
-            # {
-            # "name": "alarmMode",
-            # "type": "string",
-            # "permission": "r",
-            # "enum_values": ["OFF", "ON", "TEST", "ZONE", "MAINTENANCE"]
-            # }
-
             if 'alarmState' in attr_alarm and (attr_alarm['alarmState'] == "ON" or attr_alarm['alarmState'] == "QUIET"):
                 state = "triggered"
             elif 'alarmState' in attr_alarm and attr_alarm['alarmState'] == "DELAYED":
@@ -258,11 +243,7 @@ class TydomMessageHandler():
             elif 'alarmMode' in attr_alarm and attr_alarm["alarmMode"] == "OFF":
                 state = "disarmed"
             elif 'alarmMode' in attr_alarm and attr_alarm["alarmMode"] == "MAINTENANCE":
-                maintenance_mode = True
                 state = "disarmed"
-
-            if 'outTemperature' in attr_alarm:
-                out = attr_alarm["outTemperature"]
 
             if sos_state:
                 print("SOS !")
@@ -297,25 +278,6 @@ class TydomMessageHandler():
                 if len(cover_attributes.keys()) > 0:
                     new_cover = Cover(cover_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
                     await new_cover.update()
-            elif is_dvi(type_of_id):
-                dvi_attributes = parse_dvi_endpoint(endpoint)
-                if len(dvi_attributes.keys()) > 0:
-                    tydom_attributes = {
-                        'device_id': device_id,
-                        'endpoint_id': endpoint_id,
-                        'id': str(device_id) + '_' + str(endpoint_id),
-                        'name': friendly_name
-                    }
-                    if 'openState' in dvi_attributes:
-                        tydom_attributes['openState'] = dvi_attributes['openState']
-                        new_dvi = Sensor('openState', tydom_attributes, self.mqtt_client)
-                        await new_dvi.update()
-
-                    if 'battDefect' in dvi_attributes:
-                        tydom_attributes['battDefect'] = dvi_attributes['battDefect']
-                        tydom_attributes['device_class'] = 'battery'
-                        new_dvi = Sensor('battDefect', tydom_attributes, self.mqtt_client)
-                        await new_dvi.update()
             elif is_window(type_of_id):
                 window_attributes = parse_window_endpoint(endpoint)
                 if len(window_attributes.keys()) > 0:

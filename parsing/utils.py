@@ -21,16 +21,6 @@ def parse_cover_endpoint(endpoint):
     return covers_attributes
 
 
-def parse_dvi_endpoint(endpoint):
-    dvi_attributes = {}
-
-    for endpoint_attributes in endpoint["data"]:
-        if endpoint_attributes["name"] in devicesKeywords.DVI and endpoint_attributes["validity"] == 'upToDate':
-            dvi_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
-
-    return dvi_attributes
-
-
 def parse_door_endpoint(endpoint):
     door_attributes = {}
 

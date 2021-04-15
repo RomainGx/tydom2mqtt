@@ -10,7 +10,6 @@ DOOR_DETAILS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'bat
 COVER = ['position', 'onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
 COVER_DETAILS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect', 'position']
 
-DVI = ['openState', 'battDefect']
 WINDOW = ['openState', 'battDefect']
 
 # CLIMATE_KEYWORDS = ['temperature', 'authorization', 'hvacMode', 'setpoint']
