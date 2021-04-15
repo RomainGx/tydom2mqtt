@@ -255,6 +255,22 @@ class TydomMessageHandler():
             print("Error in alarm parsing !")
             print(e)
 
+    async def create_sensor(self, device_id, endpoint_id, friendly_name, all_attributes, keywords):
+        sensor_attributes = {
+            'device_id': device_id,
+            'endpoint_id': endpoint_id,
+            'id': str(device_id) + '_' + str(endpoint_id),
+            'name': friendly_name
+        }
+
+        for attribute_name in keywords.keys():
+            if attribute_name in all_attributes:
+                sensor_attributes[attribute_name] = all_attributes[attribute_name]
+                if keywords[attribute_name] is not None:
+                    sensor_attributes['device_class'] = keywords[attribute_name]
+                new_sensor = Sensor(attribute_name, sensor_attributes, self.mqtt_client)
+                await new_sensor.update()
+
     async def parse_endpoint(self, device_id, endpoint):
         try:
             endpoint_id = endpoint["id"]
@@ -281,52 +297,11 @@ class TydomMessageHandler():
             elif is_window(type_of_id):
                 window_attributes = parse_window_endpoint(endpoint)
                 if len(window_attributes.keys()) > 0:
-                    tydom_attributes = {
-                        'device_id': device_id,
-                        'endpoint_id': endpoint_id,
-                        'id': str(device_id) + '_' + str(endpoint_id),
-                        'name': friendly_name
-                    }
-                    if 'openState' in window_attributes:
-                        tydom_attributes['openState'] = window_attributes['openState']
-                        new_dvi = Sensor('openState', tydom_attributes, self.mqtt_client)
-                        await new_dvi.update()
-
-                    if 'battDefect' in window_attributes:
-                        tydom_attributes['battDefect'] = window_attributes['battDefect']
-                        tydom_attributes['device_class'] = 'battery'
-                        new_dvi = Sensor('battDefect', tydom_attributes, self.mqtt_client)
-                        await new_dvi.update()
+                    await self.create_sensor(device_id, endpoint_id, friendly_name, window_attributes, devicesKeywords.WINDOW)
             elif is_door(type_of_id):
                 door_attributes = parse_door_endpoint(endpoint)
                 if len(door_attributes.keys()) > 0:
-                    tydom_attributes = {
-                        'device_id': device_id,
-                        'endpoint_id': endpoint_id,
-                        'id': str(device_id) + '_' + str(endpoint_id),
-                        'name': friendly_name
-                    }
-                    if 'openState' in door_attributes:
-                        tydom_attributes['openState'] = door_attributes['openState']
-                        new_door = Sensor('openState', tydom_attributes, self.mqtt_client)
-                        await new_door.update()
-                    if 'intrusionDetect' in door_attributes:
-                        tydom_attributes['intrusionDetect'] = door_attributes['intrusionDetect']
-                        tydom_attributes['device_class'] = 'door'
-                        new_door = Sensor('intrusionDetect', tydom_attributes, self.mqtt_client)
-                        await new_door.update()
-            elif is_window(type_of_id):
-                window_attributes = parse_window_endpoint(endpoint)
-                if len(window_attributes.keys()) > 0:
-                    tydom_attributes = {
-                        'device_id': device_id,
-                        'endpoint_id': endpoint_id,
-                        'id': str(device_id) + '_' + str(endpoint_id),
-                        'name': friendly_name,
-                        'openState': window_attributes['openState']
-                    }
-                    new_window = Sensor('openState', tydom_attributes, self.mqtt_client)
-                    await new_window.update()
+                    await self.create_sensor(device_id, endpoint_id, friendly_name, door_attributes, devicesKeywords.DOOR)
             elif is_boiler(type_of_id):
                 attr_boiler = parse_boiler_endpoint(endpoint)
                 if len(attr_boiler.keys()) > 0:

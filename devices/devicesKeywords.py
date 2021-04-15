@@ -4,13 +4,19 @@ ALARM_DETAILS = ['alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4Sta
 LIGHT = ['level', 'onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
 LIGHT_DETAILS = ['onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
 
-DOOR = ['openState', 'intrusionDetect']
-DOOR_DETAILS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
+DOOR = {
+    'openState': None,
+    'intrusionDetect': 'door',
+    'battDefect': 'battery'
+}
 
 COVER = ['position', 'onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
 COVER_DETAILS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect', 'position']
 
-WINDOW = ['openState', 'battDefect']
+WINDOW = {
+    'openState': None,
+    'battDefect': 'battery'
+}
 
 # CLIMATE_KEYWORDS = ['temperature', 'authorization', 'hvacMode', 'setpoint']
 

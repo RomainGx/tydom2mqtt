@@ -25,7 +25,7 @@ def parse_door_endpoint(endpoint):
     door_attributes = {}
 
     for endpoint_attributes in endpoint["data"]:
-        if endpoint_attributes["name"] in devicesKeywords.DOOR and endpoint_attributes["validity"] == 'upToDate':
+        if endpoint_attributes["name"] in devicesKeywords.DOOR.keys() and endpoint_attributes["validity"] == 'upToDate':
             door_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
 
     return door_attributes
@@ -35,7 +35,7 @@ def parse_window_endpoint(endpoint):
     window_attributes = {}
 
     for endpoint_attributes in endpoint["data"]:
-        if endpoint_attributes["name"] in devicesKeywords.WINDOW and endpoint_attributes["validity"] == 'upToDate':
+        if endpoint_attributes["name"] in devicesKeywords.WINDOW.keys() and endpoint_attributes["validity"] == 'upToDate':
             window_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
 
     return window_attributes
