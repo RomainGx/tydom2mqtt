@@ -1,8 +1,8 @@
 import json
 
+import devices.devicesKeywords
 from devices.utils import get_device_info
 from tydomMessagehandler import create_and_update_sensor
-import devices.devicesKeywords
 
 COVER_COMMAND_TOPIC = "homeassistant/cover/tydom/{id}/set_positionCmd"
 COVER_CONFIG_TOPIC = "homeassistant/cover/tydom/{id}/config"

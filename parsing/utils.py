@@ -5,7 +5,7 @@ def parse_light_endpoint(endpoint):
     light_attributes = {}
 
     for endpoint_attributes in endpoint["data"]:
-        if endpoint_attributes["name"] in devicesKeywords.LIGHT and endpoint_attributes["validity"] == 'upToDate':
+        if endpoint_attributes["name"] in devicesKeywords.LIGHT.keys() and endpoint_attributes["validity"] == 'upToDate':
             light_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
 
     return light_attributes

@@ -1,7 +1,8 @@
 import json
 
-from sensors import Sensor
+import devices.devicesKeywords
 from devices.utils import get_device_info
+from tydomMessagehandler import create_and_update_sensor
 
 LIGHT_COMMAND_TOPIC = "homeassistant/light/tydom/{id}/set_levelCmd"
 LIGHT_CONFIG_TOPIC = "homeassistant/light/tydom/{id}/config"
@@ -64,16 +65,7 @@ class Light:
         print("light created / updated : ", self.name, self.id, self.current_level)
 
     async def update_sensors(self):
-        for attribute in self.attributes:
-            tydom_attributes_payload = {
-                'device_id': self.device_id,
-                'endpoint_id': self.endpoint_id,
-                'id': self.id,
-                'name': self.name,
-                attribute['name']: attribute['value']
-            }
-            new_sensor = Sensor(attribute['name'], tydom_attributes_payload, self.mqtt)
-            await new_sensor.update()
+        await create_and_update_sensor(self.mqtt, self.device_id, self.endpoint_id, self.name, self.attributes, devices.devicesKeywords.LIGHT)
 
     async def put_level(tydom_client, device_id, light_id, level):
         print(light_id, 'put_level', level)

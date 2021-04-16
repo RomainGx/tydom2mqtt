@@ -1,5 +1,14 @@
 ALARM = ['alarmMode', 'alarmState', 'alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4State', 'zone5State', 'zone6State', 'zone7State', 'zone8State', 'gsmLevel', 'inactiveProduct', 'zone1State', 'liveCheckRunning', 'networkDefect', 'unitAutoProtect', 'unitBatteryDefect', 'unackedEvent', 'alarmTechnical', 'systAutoProtect', 'sysBatteryDefect', 'zsystSupervisionDefect', 'systOpenIssue', 'systTechnicalDefect', 'videoLinkDefect', 'outTemperature']
-LIGHT = ['level', 'onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
+LIGHT = {
+    'level': None,
+    'onFavPos': None,
+    'thermicDefect': 'problem',
+    'battDefect': 'problem',
+    'loadDefect': 'problem',
+    'cmdDefect': 'problem',
+    'onPresenceDetected': None,
+    'onDusk': None
+}
 DOOR = {
     'openState': None,
     'intrusionDetect': 'door',
@@ -17,7 +26,7 @@ WINDOW = {
     'openState': None,
     'battDefect': 'battery'
 }
-# CLIMATE_KEYWORDS = ['temperature', 'authorization', 'hvacMode', 'setpoint']
+# CLIMATE = ['temperature', 'authorization', 'hvacMode', 'setpoint']
 BOILER = [
     'thermicLevel',
     'delayThermicLevel',
@@ -37,7 +46,7 @@ BOILER = [
     'outTemperature'
 ]
 
-CONSUMPTION_CLASSES = {
+CONSUMPTION = {
     'energyInstantTotElec': 'current',
     'energyInstantTotElec_Min': 'current',
     'energyInstantTotElec_Max': 'current',
@@ -84,4 +93,3 @@ CONSUMPTION_UNITS = {
     'energyScaleTi1I_Max': 'A',
     'energyTotIndexWatt': 'Wh'
 }
-CONSUMPTION = CONSUMPTION_CLASSES.keys()

@@ -209,7 +209,7 @@ class TydomMessageHandler():
         attr_consumption = {}
 
         for endpoint_attributes in endpoint["data"]:
-            if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION and endpoint_attributes["validity"] == "upToDate":
+            if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION.keys() and endpoint_attributes["validity"] == "upToDate":
                 attr_consumption = {
                     'device_id': device_id,
                     'endpoint_id': endpoint_id,
@@ -219,8 +219,8 @@ class TydomMessageHandler():
                     endpoint_attributes["name"]: endpoint_attributes["value"]
                 }
 
-                if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION_CLASSES:
-                    attr_consumption['device_class'] = devicesKeywords.CONSUMPTION_CLASSES[endpoint_attributes["name"]]
+                if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION:
+                    attr_consumption['device_class'] = devicesKeywords.CONSUMPTION[endpoint_attributes["name"]]
 
                 if endpoint_attributes["name"] in devicesKeywords.CONSUMPTION_UNITS:
                     attr_consumption['unit_of_measurement'] = devicesKeywords.CONSUMPTION_UNITS[endpoint_attributes["name"]]
