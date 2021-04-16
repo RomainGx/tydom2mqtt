@@ -7,6 +7,7 @@ from boiler import Boiler
 from communication.utils import *
 from cover import Cover
 from devices.utils import *
+from devices.utils2 import *
 from light import Light
 from parsing.utils import *
 from sensors import Sensor
@@ -78,22 +79,6 @@ def parse_config_data(parsed):
 
     print('Configuration updated')
 
-
-async def create_and_update_sensor(mqtt_client, device_id, endpoint_id, friendly_name, all_attributes, keywords):
-    sensor_attributes = {
-        'device_id': device_id,
-        'endpoint_id': endpoint_id,
-        'id': str(device_id) + '_' + str(endpoint_id),
-        'name': friendly_name
-    }
-
-    for attribute_name in keywords.keys():
-        if attribute_name in all_attributes:
-            sensor_attributes[attribute_name] = all_attributes[attribute_name]
-            if keywords[attribute_name] is not None:
-                sensor_attributes['device_class'] = keywords[attribute_name]
-            new_sensor = Sensor(attribute_name, sensor_attributes, mqtt_client)
-            await new_sensor.update()
 
 class TydomMessageHandler():
     def __init__(self, incoming_bytes, tydom_client, mqtt_client):
@@ -271,6 +256,17 @@ class TydomMessageHandler():
             print("Error in alarm parsing !")
             print(e)
 
+    async def parse_device_endpoint_and_publish(self, endpoint, device_id, endpoint_id, friendly_name, parse_endpoint, DeviceClass):
+        device_attributes = parse_endpoint(endpoint)
+        if len(device_attributes.keys()) > 0:
+            device = DeviceClass(device_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
+            await device.update()
+
+    async def parse_sensor_endpoint_and_publish(self, endpoint, device_id, endpoint_id, friendly_name, parse_endpoint, keywords):
+        window_attributes = parse_endpoint(endpoint)
+        if len(window_attributes.keys()) > 0:
+            await create_and_update_sensor(self.mqtt_client, device_id, endpoint_id, friendly_name, window_attributes, keywords)
+
     async def parse_endpoint(self, device_id, endpoint):
         try:
             endpoint_id = endpoint["id"]
@@ -285,28 +281,15 @@ class TydomMessageHandler():
                 friendly_name = name_of_id
 
             if is_light(type_of_id):
-                light_attributes = parse_light_endpoint(endpoint)
-                if len(light_attributes.keys()) > 0:
-                    new_light = Light(light_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
-                    await new_light.update()
+                await self.parse_device_endpoint_and_publish(endpoint, device_id, endpoint_id, friendly_name, parse_light_endpoint, Light)
             elif is_shutter(type_of_id):
-                cover_attributes = parse_cover_endpoint(endpoint)
-                if len(cover_attributes.keys()) > 0:
-                    new_cover = Cover(cover_attributes, device_id, endpoint_id, friendly_name, mqtt=self.mqtt_client)
-                    await new_cover.update()
+                await self.parse_device_endpoint_and_publish(endpoint, device_id, endpoint_id, friendly_name, parse_cover_endpoint, Cover)
             elif is_window(type_of_id):
-                window_attributes = parse_window_endpoint(endpoint)
-                if len(window_attributes.keys()) > 0:
-                    await create_and_update_sensor(self.mqtt_client, device_id, endpoint_id, friendly_name, window_attributes, devicesKeywords.WINDOW)
+                await self.parse_sensor_endpoint_and_publish(endpoint, device_id, endpoint_id, friendly_name, parse_window_endpoint, devicesKeywords.WINDOW)
             elif is_door(type_of_id):
-                door_attributes = parse_door_endpoint(endpoint)
-                if len(door_attributes.keys()) > 0:
-                    await create_and_update_sensor(self.mqtt_client, device_id, endpoint_id, friendly_name, door_attributes, devicesKeywords.DOOR)
+                await self.parse_sensor_endpoint_and_publish(endpoint, device_id, endpoint_id, friendly_name, parse_door_endpoint, devicesKeywords.DOOR)
             elif is_boiler(type_of_id):
-                attr_boiler = parse_boiler_endpoint(endpoint)
-                if len(attr_boiler.keys()) > 0:
-                    new_boiler = Boiler(attr_boiler, device_id, endpoint_id, friendly_name, self.tydom_client, self.mqtt_client)
-                    await new_boiler.update()
+                await self.parse_device_endpoint_and_publish(endpoint, device_id, endpoint_id, friendly_name, parse_boiler_endpoint, Boiler)
             elif is_alarm(type_of_id):
                 alarm_attributes = parse_alarm_endpoint(endpoint)
                 if len(alarm_attributes.keys()) > 0:

@@ -2,7 +2,7 @@ import json
 
 import devices.devicesKeywords
 from devices.utils import get_device_info
-from tydomMessagehandler import create_and_update_sensor
+from devices.utils2 import create_and_update_sensor
 
 LIGHT_COMMAND_TOPIC = "homeassistant/light/tydom/{id}/set_levelCmd"
 LIGHT_CONFIG_TOPIC = "homeassistant/light/tydom/{id}/config"
