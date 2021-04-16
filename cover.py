@@ -1,7 +1,8 @@
 import json
 
-from sensors import Sensor
 from devices.utils import get_device_info
+from tydomMessagehandler import create_and_update_sensor
+import devices.devicesKeywords
 
 COVER_COMMAND_TOPIC = "homeassistant/cover/tydom/{id}/set_positionCmd"
 COVER_CONFIG_TOPIC = "homeassistant/cover/tydom/{id}/config"
@@ -57,16 +58,7 @@ class Cover:
         print("Cover created / updated : ", self.name, self.id, self.current_position)
 
     async def update_sensors(self):
-        for attribute_name in self.attributes.keys():
-            tydom_attributes_payload = {
-                'device_id': self.device_id,
-                'endpoint_id': self.endpoint_id,
-                'id': self.id,
-                'name': self.name,
-                attribute_name: self.attributes[attribute_name]
-            }
-            new_sensor = Sensor(attribute_name, tydom_attributes_payload, self.mqtt)
-            await new_sensor.update()
+        await create_and_update_sensor(self.mqtt, self.device_id, self.endpoint_id, self.name, self.attributes, devices.devicesKeywords.COVER)
 
     async def put_position(tydom_client, device_id, cover_id, position):
         print(cover_id, 'position', position)

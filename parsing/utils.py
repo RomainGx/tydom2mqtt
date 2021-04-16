@@ -15,7 +15,7 @@ def parse_cover_endpoint(endpoint):
     covers_attributes = {}
 
     for endpoint_attributes in endpoint["data"]:
-        if endpoint_attributes["name"] in devicesKeywords.COVER and endpoint_attributes["validity"] == 'upToDate':
+        if endpoint_attributes["name"] in devicesKeywords.COVER.keys() and endpoint_attributes["validity"] == 'upToDate':
             covers_attributes[endpoint_attributes["name"]] = endpoint_attributes["value"]
 
     return covers_attributes

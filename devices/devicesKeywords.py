@@ -1,25 +1,23 @@
 ALARM = ['alarmMode', 'alarmState', 'alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4State', 'zone5State', 'zone6State', 'zone7State', 'zone8State', 'gsmLevel', 'inactiveProduct', 'zone1State', 'liveCheckRunning', 'networkDefect', 'unitAutoProtect', 'unitBatteryDefect', 'unackedEvent', 'alarmTechnical', 'systAutoProtect', 'sysBatteryDefect', 'zsystSupervisionDefect', 'systOpenIssue', 'systTechnicalDefect', 'videoLinkDefect', 'outTemperature']
-ALARM_DETAILS = ['alarmSOS', 'zone1State', 'zone2State', 'zone3State', 'zone4State', 'zone5State', 'zone6State', 'zone7State', 'zone8State', 'gsmLevel', 'inactiveProduct', 'zone1State', 'liveCheckRunning', 'networkDefect', 'unitAutoProtect', 'unitBatteryDefect', 'unackedEvent', 'alarmTechnical', 'systAutoProtect', 'sysBatteryDefect', 'zsystSupervisionDefect', 'systOpenIssue', 'systTechnicalDefect', 'videoLinkDefect', 'outTemperature']
-
 LIGHT = ['level', 'onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
-LIGHT_DETAILS = ['onFavPos', 'thermicDefect', 'battDefect', 'loadDefect', 'cmdDefect', 'onPresenceDetected', 'onDusk']
-
 DOOR = {
     'openState': None,
     'intrusionDetect': 'door',
     'battDefect': 'battery'
 }
-
-COVER = ['position', 'onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect']
-COVER_DETAILS = ['onFavPos', 'thermicDefect', 'obstacleDefect', 'intrusion', 'battDefect', 'position']
-
+COVER = {
+    'position': None,
+    'onFavPos': None,
+    'thermicDefect': 'problem',
+    'obstacleDefect': 'problem',
+    'intrusion': 'opening',
+    'battDefect': 'problem'
+}
 WINDOW = {
     'openState': None,
     'battDefect': 'battery'
 }
-
 # CLIMATE_KEYWORDS = ['temperature', 'authorization', 'hvacMode', 'setpoint']
-
 BOILER = [
     'thermicLevel',
     'delayThermicLevel',
